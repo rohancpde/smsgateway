@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMS Gateway - System Status</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; }
+        .container { max-width: 800px; margin: 0 auto; padding: 24px; }
+        h1 { font-size: 28px; margin-bottom: 4px; }
+        .subtitle { color: #64748b; margin-bottom: 32px; }
+        .overall { padding: 24px; border-radius: 12px; margin-bottom: 24px; text-align: center; }
+        .overall.operational { background: #dcfce7; color: #166534; }
+        .overall.degraded { background: #fef3c7; color: #92400e; }
+        .overall.partial_outage { background: #fed7aa; color: #9a3412; }
+        .overall.major_outage { background: #fee2e2; color: #991b1b; }
+        .overall h2 { font-size: 22px; margin-bottom: 4px; }
+        .overall .uptime { font-size: 14px; opacity: 0.8; }
+        .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .card h3 { font-size: 16px; margin-bottom: 16px; }
+        .component { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+        .component:last-child { border-bottom: none; }
+        .component .name { font-weight: 500; }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-yellow { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fee2e2; color: #991b1b; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .incident { padding: 16px; border-left: 4px solid #e2e8f0; margin-bottom: 12px; border-radius: 0 8px 8px 0; background: #f8fafc; }
+        .incident.minor { border-left-color: #facc15; }
+        .incident.major { border-left-color: #f97316; }
+        .incident.critical { border-left-color: #ef4444; }
+        .incident .title { font-weight: 600; margin-bottom: 4px; }
+        .incident .meta { font-size: 12px; color: #64748b; }
+        .incident .desc { font-size: 14px; margin-top: 8px; color: #475569; }
+        .empty { text-align: center; padding: 24px; color: #94a3b8; }
+        .footer { text-align: center; padding: 24px; color: #94a3b8; font-size: 13px; }
+        .loading { text-align: center; padding: 48px; color: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SMS Gateway</h1>
+        <p class="subtitle">System Status</p>
+
+        <div id="content"><div class="loading">Loading status...</div></div>
+
+        <div class="footer">Powered by SMS Gateway</div>
+    </div>
+
+    <script>
+    // API URL otomatik tespit - status.html ile ayni dizindeki api.php
+    const API_URL = (function() {
+        const path = window.location.pathname;
+        const dir = path.substring(0, path.lastIndexOf('/') + 1);
+        return window.location.origin + dir + 'api.php';
+    })();
+
+    async function loadStatus() {
+        const el = document.getElementById('content');
+
+        try {
+            const sep = API_URL.includes('?') ? '&' : '?';
+            const r = await fetch(API_URL + sep + 'request=public-status');
+            const d = await r.json();
+
+            if (!d.success) { el.innerHTML = '<div class="card"><p class="empty">Failed to load status</p></div>'; return; }
+
+            const statusLabels = { operational: 'Operational', degraded: 'Degraded Performance', partial_outage: 'Partial Outage', major_outage: 'Major Outage', maintenance: 'Under Maintenance' };
+            const statusBadge = s => {
+                const cls = { operational:'badge-green', degraded:'badge-yellow', partial_outage:'badge-yellow', major_outage:'badge-red', maintenance:'badge-blue' };
+                return `<span class="badge ${cls[s]||'badge-yellow'}">${statusLabels[s]||s}</span>`;
+            };
+
+            let html = `<div class="overall ${d.overall_status}">
+                <h2>${statusLabels[d.overall_status] || 'Unknown'}</h2>
+                <div class="uptime">30-day uptime: ${d.uptime_30d}%</div>
+            </div>`;
+
+            html += '<div class="card"><h3>Components</h3>';
+            (d.components||[]).forEach(c => {
+                html += `<div class="component">
+                    <span class="name">${esc(c.component)}</span>
+                    ${statusBadge(c.status)}
+                </div>`;
+            });
+            html += '</div>';
+
+            html += '<div class="card"><h3>Recent Incidents</h3>';
+            if (d.recent_incidents?.length) {
+                d.recent_incidents.forEach(i => {
+                    const sevBadge = { minor:'badge-yellow', major:'badge-yellow', critical:'badge-red' };
+                    const stsBadge = { investigating:'badge-red', identified:'badge-yellow', monitoring:'badge-blue', resolved:'badge-green' };
+                    html += `<div class="incident ${i.severity}">
+                        <div class="title">${esc(i.title)} <span class="badge ${sevBadge[i.severity]||''}">${i.severity}</span> <span class="badge ${stsBadge[i.status]||''}">${i.status}</span></div>
+                        <div class="meta">${i.created_at || ''} ${i.affected_components ? '| Affected: ' + i.affected_components.join(', ') : ''}</div>
+                        ${i.description ? '<div class="desc">' + esc(i.description) + '</div>' : ''}
+                    </div>`;
+                });
+            } else {
+                html += '<p class="empty">No recent incidents</p>';
+            }
+            html += '</div>';
+
+            el.innerHTML = html;
+        } catch (e) {
+            el.innerHTML = '<div class="card"><p class="empty">Error loading status: ' + e.message + '</p></div>';
+        }
+    }
+
+    function esc(s) { const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
+
+    loadStatus();
+    setInterval(loadStatus, 60000);
+    </script>
+</body>
+</html>

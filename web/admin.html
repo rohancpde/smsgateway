@@ -1,0 +1,2417 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMS Gateway - Admin Panel</title>
+    <meta name="robots" content="noindex, nofollow">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --danger: #dc2626;
+            --success: #16a34a; --warning: #d97706; --bg: #f1f5f9;
+            --card: #ffffff; --text: #1e293b; --muted: #64748b;
+            --border: #e2e8f0; --radius: 12px;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        .login-container { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .login-box { background: var(--card); padding: 40px; border-radius: var(--radius); box-shadow: 0 4px 24px rgba(0,0,0,0.08); width: 400px; max-width: 90vw; }
+        .login-box h1 { font-size: 24px; margin-bottom: 8px; }
+        .login-box p { color: var(--muted); margin-bottom: 24px; }
+        .app { display: none; }
+        .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 240px; background: var(--text); color: white; padding: 20px 0; overflow-y: auto; z-index: 100; }
+        .sidebar h2 { padding: 0 20px; font-size: 18px; margin-bottom: 24px; }
+        .sidebar a { display: block; padding: 10px 20px; color: #94a3b8; text-decoration: none; font-size: 14px; transition: all .2s; cursor: pointer; }
+        .sidebar a:hover, .sidebar a.active { background: rgba(255,255,255,0.1); color: white; }
+        .sidebar a .icon { margin-right: 8px; }
+        .sidebar .sidebar-divider { height: 1px; background: rgba(255,255,255,0.1); margin: 10px 20px; }
+        .sidebar .sidebar-label { padding: 8px 20px 4px; font-size: 10px; text-transform: uppercase; color: #475569; letter-spacing: 1px; }
+        .main { margin-left: 240px; padding: 24px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .header h1 { font-size: 24px; }
+        .card { background: var(--card); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: var(--card); border-radius: var(--radius); padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .stat-card .label { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+        .stat-card .value { font-size: 28px; font-weight: 700; }
+        .stat-card .value.green { color: var(--success); }
+        .stat-card .value.red { color: var(--danger); }
+        .stat-card .value.blue { color: var(--primary); }
+        .stat-card .value.orange { color: var(--warning); }
+        input, textarea, select { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; margin-bottom: 12px; font-family: inherit; }
+        textarea { min-height: 100px; resize: vertical; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; }
+        th { font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-red { background: #fee2e2; color: #991b1b; }
+        .badge-yellow { background: #fef3c7; color: #92400e; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gray { background: #f1f5f9; color: #475569; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: var(--muted); }
+        .section { display: none; }
+        .section.active { display: block; }
+        .toast { position: fixed; top: 20px; right: 20px; padding: 14px 24px; border-radius: 8px; color: white; font-weight: 500; z-index: 1000; animation: slideIn .3s; }
+        .toast-success { background: var(--success); }
+        .toast-error { background: var(--danger); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .device-checkbox { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f8fafc; border-radius: 8px; margin-bottom: 6px; }
+        .device-checkbox input { width: auto; margin: 0; }
+        .device-checkbox label { margin: 0; font-size: 13px; cursor: pointer; }
+        .device-checkbox .status { margin-left: auto; }
+        .number-preview { background: #f8fafc; border-radius: 8px; padding: 12px; margin-top: 8px; max-height: 200px; overflow-y: auto; font-size: 12px; font-family: monospace; }
+        .template-card { border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 8px; cursor: pointer; transition: all .2s; }
+        .template-card:hover { border-color: var(--primary); background: #f0f7ff; }
+        .template-card.selected { border-color: var(--primary); background: #dbeafe; }
+        .template-card h4 { font-size: 14px; margin-bottom: 4px; }
+        .template-card p { font-size: 12px; color: var(--muted); }
+        .tab-bar { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 2px solid var(--border); }
+        .tab-bar button { padding: 10px 20px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .tab-bar button.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .empty { text-align: center; padding: 40px; color: var(--muted); }
+        .heatmap-cell { display: inline-block; width: 36px; height: 28px; text-align: center; line-height: 28px; font-size: 10px; border-radius: 4px; margin: 1px; color: #1e293b; }
+        .heatmap-row { display: flex; align-items: center; margin-bottom: 2px; }
+        .heatmap-row .day-label { width: 90px; font-size: 12px; color: var(--muted); flex-shrink: 0; }
+        .score-bar { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
+        .score-bar-fill { height: 100%; border-radius: 4px; transition: width .3s; }
+        .alert-card { border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 8px; }
+        .alert-card.alert-critical { border-left: 4px solid var(--danger); }
+        .alert-card.alert-warning { border-left: 4px solid var(--warning); }
+        .alert-card.alert-info { border-left: 4px solid var(--primary); }
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+        .checkbox-group label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+        .checkbox-group input { width: auto; margin: 0; }
+        @media (max-width: 768px) {
+            .sidebar { width: 60px; } .sidebar h2, .sidebar a span, .sidebar .sidebar-divider, .sidebar .sidebar-label { display: none; }
+            .main { margin-left: 60px; } .form-row { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- LOGIN -->
+    <div class="login-container" id="loginContainer">
+        <div class="login-box">
+            <h1>SMS Gateway</h1>
+            <p>Admin paneline giris yapin</p>
+            <div class="form-group">
+                <label>Admin Token</label>
+                <input type="password" id="loginToken" placeholder="Admin token girin" onkeydown="if(event.key==='Enter')doLogin()">
+            </div>
+            <button class="btn btn-primary" style="width:100%" onclick="doLogin()">Giris Yap</button>
+            <p id="loginError" style="color:var(--danger);margin-top:12px;font-size:13px;display:none"></p>
+        </div>
+    </div>
+
+    <!-- APP -->
+    <div class="app" id="app">
+        <nav class="sidebar">
+            <h2>SMS Gateway</h2>
+            <a class="active" onclick="showSection('dashboard')"><span class="icon">&#x1f4ca;</span> <span>Dashboard</span></a>
+            <a onclick="showSection('send')"><span class="icon">&#x2709;</span> <span>SMS Gonder</span></a>
+            <a onclick="showSection('distribute')"><span class="icon">&#x1f4e8;</span> <span>Toplu Dagitim</span></a>
+            <a onclick="showSection('loadbalance')"><span class="icon">&#x2696;</span> <span>Yuk Dengeleme</span></a>
+            <a onclick="showSection('templates')"><span class="icon">&#x1f4dd;</span> <span>Sablonlar</span></a>
+            <a onclick="showSection('devices')"><span class="icon">&#x1f4f1;</span> <span>Cihazlar</span></a>
+            <a onclick="showSection('history')"><span class="icon">&#x1f4c3;</span> <span>SMS Gecmisi</span></a>
+            <a onclick="showSection('incoming-sms')"><span class="icon">&#x1f4e5;</span> <span>Gelen SMS</span></a>
+            <div class="sidebar-divider"></div>
+            <div class="sidebar-label">Kisiler</div>
+            <a onclick="showSection('contacts')"><span class="icon">&#x1f465;</span> <span>Kisiler</span></a>
+            <a onclick="showSection('blacklist')"><span class="icon">&#x1f6ab;</span> <span>Kara Liste</span></a>
+            <div class="sidebar-divider"></div>
+            <div class="sidebar-label">Otomasyon</div>
+            <a onclick="showSection('auto-reply')"><span class="icon">&#x1f504;</span> <span>Otomatik Yanit</span></a>
+            <a onclick="showSection('otp')"><span class="icon">&#x1f511;</span> <span>OTP</span></a>
+            <a onclick="showSection('shortlinks')"><span class="icon">&#x1f517;</span> <span>Kisa Linkler</span></a>
+            <div class="sidebar-divider"></div>
+            <div class="sidebar-label">Izleme</div>
+            <a onclick="showSection('anomaly')"><span class="icon">&#x26a0;</span> <span>Anomali Tespiti</span></a>
+            <a onclick="showSection('alerts')"><span class="icon">&#x1f514;</span> <span>Uyarilar</span></a>
+            <a onclick="showSection('scores')"><span class="icon">&#x1f3af;</span> <span>Cihaz Skorlari</span></a>
+            <a onclick="showSection('heatmap')"><span class="icon">&#x1f525;</span> <span>Heatmap</span></a>
+            <a onclick="showSection('uptime')"><span class="icon">&#x1f49a;</span> <span>Uptime</span></a>
+            <div class="sidebar-divider"></div>
+            <div class="sidebar-label">Sistem</div>
+            <a onclick="showSection('cost')"><span class="icon">&#x1f4b0;</span> <span>Maliyet</span></a>
+            <a onclick="showSection('queue')"><span class="icon">&#x1f4e6;</span> <span>Kuyruk</span></a>
+            <a onclick="showSection('remote-cmd')"><span class="icon">&#x1f39b;</span> <span>Uzaktan Komut</span></a>
+            <a onclick="showSection('autoscale')"><span class="icon">&#x1f4c8;</span> <span>Otomatik Olcek</span></a>
+            <a onclick="showSection('status-page')"><span class="icon">&#x1f7e2;</span> <span>Durum Sayfasi</span></a>
+            <a onclick="showSection('api-versions')"><span class="icon">&#x1f522;</span> <span>API Versiyon</span></a>
+            <a onclick="showSection('logs')"><span class="icon">&#x1f4cb;</span> <span>Log Viewer</span></a>
+            <a onclick="showSection('export')"><span class="icon">&#x1f4e4;</span> <span>Export</span></a>
+            <a onclick="doLogout()" style="margin-top:16px;color:#ef4444"><span class="icon">&#x274c;</span> <span>Cikis</span></a>
+        </nav>
+
+        <div class="main">
+            <!-- DASHBOARD -->
+            <div class="section active" id="sec-dashboard">
+                <div class="header"><h1>Dashboard</h1></div>
+                <div class="stats-grid" id="statsGrid"></div>
+                <div class="card">
+                    <h3 style="margin-bottom:12px">Son 7 Gun Trendi</h3>
+                    <div id="weeklyTrend"></div>
+                </div>
+                <div class="card" style="margin-top:16px">
+                    <h3 style="margin-bottom:12px">Cihaz Durumu</h3>
+                    <div id="deviceHealthTable"></div>
+                </div>
+            </div>
+
+            <!-- TEK SMS -->
+            <div class="section" id="sec-send">
+                <div class="header"><h1>SMS Gonder</h1></div>
+                <div class="card">
+                    <div class="form-group">
+                        <label>Cihaz</label>
+                        <select id="sendDevice"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Telefon Numarasi</label>
+                        <input type="tel" id="sendPhone" placeholder="+905551234567">
+                    </div>
+                    <div class="form-group">
+                        <label>Mesaj</label>
+                        <textarea id="sendMessage" placeholder="SMS mesajinizi yazin..."></textarea>
+                        <small id="sendCharCount" style="color:var(--muted)">0 karakter</small>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Oncelik (1-10)</label>
+                            <input type="number" id="sendPriority" value="5" min="1" max="10">
+                        </div>
+                        <div class="form-group">
+                            <label>Sablon (Opsiyonel)</label>
+                            <select id="sendTemplate"><option value="">-- Sablon Sec --</option></select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="sendSingleSms()">Gonder</button>
+                </div>
+            </div>
+
+            <!-- TOPLU DAGITIM -->
+            <div class="section" id="sec-distribute">
+                <div class="header"><h1>Toplu SMS Dagitimi</h1></div>
+                <div class="card">
+                    <div class="form-group">
+                        <label>Cihaz Secimi (birden fazla secilebilir)</label>
+                        <div id="distributeDevices"></div>
+                        <button class="btn btn-sm" style="margin-top:6px" onclick="selectAllDevices()">Tumunu Sec</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Telefon Numaralari (her satira bir numara)</label>
+                        <textarea id="distributeNumbers" rows="8" placeholder="+905551234567&#10;+905559876543&#10;+905551112233"></textarea>
+                        <div class="number-preview" id="numberPreview" style="display:none"></div>
+                    </div>
+
+                    <div class="tab-bar">
+                        <button class="active" onclick="switchMsgTab(this, 'manual')">Elle Yaz</button>
+                        <button onclick="switchMsgTab(this, 'template')">Sablondan Sec</button>
+                    </div>
+
+                    <div id="msgTabManual">
+                        <div class="form-group">
+                            <label>Mesaj</label>
+                            <textarea id="distributeMessage" placeholder="Gonderilecek mesaj..."></textarea>
+                            <small id="distCharCount" style="color:var(--muted)">0 karakter</small>
+                        </div>
+                    </div>
+                    <div id="msgTabTemplate" style="display:none">
+                        <div class="form-group">
+                            <label>Sablon Secin</label>
+                            <div id="templateCards"></div>
+                        </div>
+                        <div class="form-group" id="templateVarsContainer" style="display:none">
+                            <label>Degiskenler</label>
+                            <div id="templateVars"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Oncelik (1-10)</label>
+                        <input type="number" id="distributePriority" value="5" min="1" max="10">
+                    </div>
+
+                    <button class="btn btn-primary" onclick="distributeSms()" id="distributeBtn">Dagit ve Gonder</button>
+                    <div id="distributeResult" style="margin-top:16px;display:none"></div>
+                </div>
+            </div>
+
+            <!-- YUK DENGELEME -->
+            <div class="section" id="sec-loadbalance">
+                <div class="header"><h1>Yuk Dengeleme ile Dagitim</h1></div>
+                <div class="card">
+                    <div class="form-group">
+                        <label>Dagitim Stratejisi</label>
+                        <select id="lbStrategy">
+                            <option value="weighted">Agirlikli (Weighted)</option>
+                            <option value="performance">Performans Bazli</option>
+                            <option value="cost">Maliyet Bazli</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Cihaz Secimi</label>
+                        <div id="lbDevices"></div>
+                        <button class="btn btn-sm" style="margin-top:6px" onclick="selectAllLbDevices()">Tumunu Sec</button>
+                    </div>
+                    <div id="lbWeightsContainer" style="margin-bottom:12px"></div>
+                    <div class="form-group">
+                        <label>Telefon Numaralari (her satira bir numara)</label>
+                        <textarea id="lbNumbers" rows="8" placeholder="+905551234567&#10;+905559876543"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Mesaj</label>
+                        <textarea id="lbMessage" placeholder="Gonderilecek mesaj..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Oncelik (1-10)</label>
+                        <input type="number" id="lbPriority" value="5" min="1" max="10">
+                    </div>
+                    <button class="btn btn-primary" onclick="distributeWeighted()" id="lbBtn">Dengeli Dagit</button>
+                    <div id="lbResult" style="margin-top:16px;display:none"></div>
+                </div>
+            </div>
+
+            <!-- SABLONLAR -->
+            <div class="section" id="sec-templates">
+                <div class="header">
+                    <h1>SMS Sablonlari</h1>
+                    <button class="btn btn-primary" onclick="toggleNewTemplate()">+ Yeni Sablon</button>
+                </div>
+                <div class="card" id="newTemplateForm" style="display:none">
+                    <div class="form-group"><label>Sablon Adi</label><input type="text" id="tplName" placeholder="Ornek: Hosgeldiniz"></div>
+                    <div class="form-group"><label>Icerik (degiskenler icin {{degisken}} kullanin)</label><textarea id="tplContent" placeholder="Sayin {{isim}}, siparisiz #{{siparis_no}} kargoya verilmistir."></textarea></div>
+                    <div class="form-group"><label>Degiskenler (virgülle ayirin)</label><input type="text" id="tplVars" placeholder="isim, siparis_no"></div>
+                    <button class="btn btn-success" onclick="createTemplate()">Kaydet</button>
+                    <button class="btn" onclick="toggleNewTemplate()">Iptal</button>
+                </div>
+                <div id="templateList"></div>
+            </div>
+
+            <!-- CIHAZLAR -->
+            <div class="section" id="sec-devices">
+                <div class="header"><h1>Cihazlar</h1></div>
+                <div class="card"><div id="deviceList"></div></div>
+            </div>
+
+            <!-- SMS GECMISI -->
+            <div class="section" id="sec-history">
+                <div class="header"><h1>SMS Gecmisi</h1></div>
+                <div class="card">
+                    <div class="form-row" style="margin-bottom:12px">
+                        <select id="historyDevice"><option value="">Tum Cihazlar</option></select>
+                        <select id="historyStatus"><option value="">Tum Durumlar</option><option value="pending">Bekleyen</option><option value="sent">Gonderildi</option><option value="failed">Basarisiz</option><option value="delivered">Teslim</option></select>
+                    </div>
+                    <button class="btn btn-sm btn-primary" onclick="loadHistory()" style="margin-bottom:12px">Filtrele</button>
+                    <div id="historyTable"></div>
+                    <div id="historyPagination" style="margin-top:12px;text-align:center"></div>
+                </div>
+            </div>
+
+            <!-- GELEN SMS -->
+            <div class="section" id="sec-incoming-sms">
+                <div class="header"><h1>Gelen SMS</h1></div>
+                <div class="card">
+                    <div class="form-row" style="margin-bottom:12px">
+                        <select id="incomingDevice"><option value="">Tum Cihazlar</option></select>
+                        <select id="incomingReadFilter">
+                            <option value="">Tumu</option>
+                            <option value="0">Okunmamis</option>
+                            <option value="1">Okunmus</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-sm btn-primary" onclick="loadIncomingSms()" style="margin-bottom:12px">Filtrele</button>
+                    <div id="incomingSmsTable"></div>
+                    <div id="incomingSmsPagination" style="margin-top:12px;text-align:center"></div>
+                </div>
+            </div>
+
+            <!-- KISILER -->
+            <div class="section" id="sec-contacts">
+                <div class="header">
+                    <h1>Kisiler</h1>
+                    <button class="btn btn-primary" onclick="toggleNewContact()">+ Kisi Ekle</button>
+                </div>
+                <div class="card" id="newContactForm" style="display:none">
+                    <div class="form-row">
+                        <div class="form-group"><label>Ad</label><input type="text" id="contactName" placeholder="Ahmet Yilmaz"></div>
+                        <div class="form-group"><label>Telefon</label><input type="tel" id="contactPhone" placeholder="+905551234567"></div>
+                    </div>
+                    <div class="form-group"><label>Grup</label><input type="text" id="contactGroup" placeholder="Musteriler"></div>
+                    <button class="btn btn-success" onclick="addContact()">Kaydet</button>
+                </div>
+                <div id="contactList"></div>
+            </div>
+
+            <!-- KARA LISTE -->
+            <div class="section" id="sec-blacklist">
+                <div class="header">
+                    <h1>Kara Liste</h1>
+                    <button class="btn btn-danger" onclick="toggleNewBlacklist()">+ Numara Ekle</button>
+                </div>
+                <div class="card" id="newBlacklistForm" style="display:none">
+                    <div class="form-row">
+                        <div class="form-group"><label>Telefon</label><input type="tel" id="blPhone" placeholder="+905551234567"></div>
+                        <div class="form-group"><label>Sebep</label><input type="text" id="blReason" placeholder="Spam"></div>
+                    </div>
+                    <button class="btn btn-danger" onclick="addBlacklist()">Kara Listeye Ekle</button>
+                </div>
+                <div id="blacklistTable"></div>
+            </div>
+
+            <!-- OTOMATIK YANIT -->
+            <div class="section" id="sec-auto-reply">
+                <div class="header">
+                    <h1>Otomatik Yanit Kurallari</h1>
+                    <button class="btn btn-primary" onclick="toggleNewAutoReply()">+ Yeni Kural</button>
+                </div>
+                <div class="card" id="newAutoReplyForm" style="display:none">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Anahtar Kelime</label>
+                            <input type="text" id="arKeyword" placeholder="BILGI">
+                        </div>
+                        <div class="form-group">
+                            <label>Eslestirme Tipi</label>
+                            <select id="arMatchType">
+                                <option value="exact">Tam Eslestirme</option>
+                                <option value="contains">Icerir</option>
+                                <option value="starts_with">Ile Baslar</option>
+                                <option value="regex">Regex</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Yanit Mesaji</label>
+                        <textarea id="arReplyMessage" placeholder="Otomatik yanit mesajinizi yazin..."></textarea>
+                    </div>
+                    <button class="btn btn-success" onclick="createAutoReplyRule()">Kaydet</button>
+                    <button class="btn" onclick="toggleNewAutoReply()">Iptal</button>
+                </div>
+                <div id="autoReplyList"></div>
+            </div>
+
+            <!-- OTP -->
+            <div class="section" id="sec-otp">
+                <div class="header"><h1>OTP (Tek Kullanimlik Sifre)</h1></div>
+                <div class="card">
+                    <h3 style="margin-bottom:16px">OTP Gonder</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Telefon Numarasi</label>
+                            <input type="tel" id="otpPhone" placeholder="+905551234567">
+                        </div>
+                        <div class="form-group">
+                            <label>Cihaz</label>
+                            <select id="otpDevice"></select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Amac (Purpose)</label>
+                            <input type="text" id="otpPurpose" placeholder="login, register, reset">
+                        </div>
+                        <div class="form-group">
+                            <label>Uzunluk (4-8)</label>
+                            <input type="number" id="otpLength" value="6" min="4" max="8">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Gecerlilik Suresi (saniye, 60-3600)</label>
+                            <input type="number" id="otpTtl" value="300" min="60" max="3600">
+                        </div>
+                        <div class="form-group">
+                            <label>Mesaj Sablonu (Opsiyonel)</label>
+                            <input type="text" id="otpMessageTemplate" placeholder="Kodunuz: {{code}}">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="sendOtp()">OTP Gonder</button>
+                    <div id="otpSendResult" style="margin-top:12px"></div>
+                </div>
+                <div class="card" style="margin-top:16px">
+                    <h3 style="margin-bottom:16px">OTP Dogrula</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Telefon Numarasi</label>
+                            <input type="tel" id="otpVerifyPhone" placeholder="+905551234567">
+                        </div>
+                        <div class="form-group">
+                            <label>Kod</label>
+                            <input type="text" id="otpVerifyCode" placeholder="123456">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Amac (Purpose)</label>
+                        <input type="text" id="otpVerifyPurpose" placeholder="login, register, reset">
+                    </div>
+                    <button class="btn btn-success" onclick="verifyOtp()">Dogrula</button>
+                    <div id="otpVerifyResult" style="margin-top:12px"></div>
+                </div>
+            </div>
+
+            <!-- KISA LINKLER -->
+            <div class="section" id="sec-shortlinks">
+                <div class="header">
+                    <h1>Kisa Linkler</h1>
+                    <button class="btn btn-primary" onclick="toggleNewShortLink()">+ Yeni Link</button>
+                </div>
+                <div class="card" id="newShortLinkForm" style="display:none">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>URL</label>
+                            <input type="url" id="slUrl" placeholder="https://ornek.com/uzun-link">
+                        </div>
+                        <div class="form-group">
+                            <label>Gecerlilik (saat)</label>
+                            <input type="number" id="slTtl" value="24" min="1" placeholder="24">
+                        </div>
+                    </div>
+                    <button class="btn btn-success" onclick="createShortLink()">Olustur</button>
+                    <button class="btn" onclick="toggleNewShortLink()">Iptal</button>
+                </div>
+                <div id="shortLinkList"></div>
+            </div>
+
+            <!-- ANOMALI TESPITI -->
+            <div class="section" id="sec-anomaly">
+                <div class="header">
+                    <h1>Anomali Tespiti</h1>
+                    <button class="btn btn-primary" onclick="toggleNewAnomalyRule()">+ Yeni Kural</button>
+                </div>
+                <div class="card" id="newAnomalyRuleForm" style="display:none">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Kural Adi</label>
+                            <input type="text" id="anomRuleName" placeholder="Yuksek hata orani">
+                        </div>
+                        <div class="form-group">
+                            <label>Metrik</label>
+                            <select id="anomMetric">
+                                <option value="fail_rate">Hata Orani</option>
+                                <option value="send_volume">Gonderim Hacmi</option>
+                                <option value="response_time">Yanit Suresi</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Operator</label>
+                            <select id="anomOperator">
+                                <option value="gt">Buyuktur (>)</option>
+                                <option value="lt">Kucuktur (<)</option>
+                                <option value="gte">Buyuk Esit (>=)</option>
+                                <option value="lte">Kucuk Esit (<=)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Esik Degeri</label>
+                            <input type="number" id="anomThreshold" value="50" min="0" step="0.1">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Zaman Penceresi (dakika)</label>
+                            <input type="number" id="anomWindow" value="60" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Onem Derecesi</label>
+                            <select id="anomSeverity">
+                                <option value="critical">Kritik</option>
+                                <option value="warning">Uyari</option>
+                                <option value="info">Bilgi</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-success" onclick="createAnomalyRule()">Kaydet</button>
+                    <button class="btn" onclick="toggleNewAnomalyRule()">Iptal</button>
+                </div>
+                <div class="card">
+                    <h3 style="margin-bottom:12px">Aktif Olaylar</h3>
+                    <div id="anomalyEvents"></div>
+                </div>
+                <div class="card">
+                    <h3 style="margin-bottom:12px">Kurallar</h3>
+                    <div id="anomalyRulesList"></div>
+                </div>
+            </div>
+
+            <!-- UYARILAR -->
+            <div class="section" id="sec-alerts">
+                <div class="header">
+                    <h1>Uyari Kanallari</h1>
+                    <button class="btn btn-primary" onclick="toggleNewAlertChannel()">+ Yeni Kanal</button>
+                </div>
+                <div class="card" id="newAlertChannelForm" style="display:none">
+                    <div class="form-group">
+                        <label>Kanal Tipi</label>
+                        <select id="alertChannelType">
+                            <option value="email">E-posta</option>
+                            <option value="sms">SMS</option>
+                            <option value="telegram">Telegram</option>
+                            <option value="slack">Slack</option>
+                            <option value="webhook">Webhook</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Yapilandirma (JSON)</label>
+                        <textarea id="alertChannelConfig" placeholder='{"to": "admin@ornek.com"}' style="min-height:80px;font-family:monospace"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Olaylar</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" value="device.offline"> Cihaz Cevrimdisi</label>
+                            <label><input type="checkbox" value="anomaly.detected"> Anomali Tespit</label>
+                            <label><input type="checkbox" value="sms.failed_batch"> Toplu SMS Hatasi</label>
+                        </div>
+                    </div>
+                    <button class="btn btn-success" onclick="createAlertChannel()">Kaydet</button>
+                    <button class="btn" onclick="toggleNewAlertChannel()">Iptal</button>
+                </div>
+                <div id="alertChannelList"></div>
+            </div>
+
+            <!-- MALIYET -->
+            <div class="section" id="sec-cost">
+                <div class="header"><h1>Maliyet Takibi</h1></div>
+                <div class="card">
+                    <div class="form-row" style="margin-bottom:12px">
+                        <div class="form-group">
+                            <label>Son Kac Gun</label>
+                            <input type="number" id="costDays" value="30" min="1" max="365">
+                        </div>
+                        <div class="form-group" style="display:flex;align-items:flex-end">
+                            <button class="btn btn-primary" onclick="loadCostReport()">Rapor Getir</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="stats-grid" id="costStatsGrid"></div>
+                <div class="card">
+                    <h3 style="margin-bottom:12px">Gunluk Maliyetler</h3>
+                    <div id="costDailyTable"></div>
+                </div>
+                <div class="card">
+                    <h3 style="margin-bottom:12px">Cihaz Bazli Maliyetler</h3>
+                    <div id="costDeviceTable"></div>
+                </div>
+                <div class="card">
+                    <h3 style="margin-bottom:12px">Cihaz Maliyet Ayarlari</h3>
+                    <div id="costDeviceSettings"></div>
+                </div>
+            </div>
+
+            <!-- CIHAZ SKORLARI -->
+            <div class="section" id="sec-scores">
+                <div class="header"><h1>Cihaz Performans Skorlari</h1></div>
+                <div id="deviceScoresList"></div>
+            </div>
+
+            <!-- HEATMAP -->
+            <div class="section" id="sec-heatmap">
+                <div class="header"><h1>SMS Aktivite Heatmap</h1></div>
+                <div class="card">
+                    <div class="form-row" style="margin-bottom:12px">
+                        <div class="form-group">
+                            <label>Son Kac Gun</label>
+                            <input type="number" id="heatmapDays" value="7" min="1" max="30">
+                        </div>
+                        <div class="form-group" style="display:flex;align-items:flex-end">
+                            <button class="btn btn-primary" onclick="loadHeatmap()">Yukle</button>
+                        </div>
+                    </div>
+                    <div style="overflow-x:auto">
+                        <div id="heatmapGrid"></div>
+                    </div>
+                    <div style="margin-top:12px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)">
+                        <span>Az</span>
+                        <span class="heatmap-cell" style="background:#f0fdf4">0</span>
+                        <span class="heatmap-cell" style="background:#bbf7d0">.</span>
+                        <span class="heatmap-cell" style="background:#4ade80">.</span>
+                        <span class="heatmap-cell" style="background:#16a34a;color:white">.</span>
+                        <span class="heatmap-cell" style="background:#166534;color:white">.</span>
+                        <span>Cok</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- UPTIME -->
+            <div class="section" id="sec-uptime">
+                <div class="header"><h1>Sistem Uptime</h1></div>
+                <div class="stats-grid" id="uptimeStats"></div>
+                <div class="card">
+                    <h3 style="margin-bottom:12px">Cihaz Bazli Uptime</h3>
+                    <div id="uptimeDeviceTable"></div>
+                </div>
+            </div>
+
+            <!-- LOG VIEWER -->
+            <div class="section" id="sec-logs">
+                <div class="header"><h1>Denetim Loglari</h1></div>
+                <div class="card">
+                    <div class="form-row" style="margin-bottom:12px">
+                        <div class="form-group">
+                            <label>Islem Filtresi</label>
+                            <input type="text" id="logActionFilter" placeholder="send_sms, login, vb.">
+                        </div>
+                        <div class="form-group">
+                            <label>Aktor Tipi</label>
+                            <select id="logActorType">
+                                <option value="">Tumu</option>
+                                <option value="admin">Admin</option>
+                                <option value="device">Cihaz</option>
+                                <option value="api">API</option>
+                                <option value="system">Sistem</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-primary" onclick="loadAuditLogs()" style="margin-bottom:12px">Filtrele</button>
+                    <div id="auditLogTable"></div>
+                    <div id="auditLogPagination" style="margin-top:12px;text-align:center"></div>
+                </div>
+            </div>
+
+            <!-- EXPORT -->
+            <div class="section" id="sec-export">
+                <div class="header"><h1>Veri Disa Aktarma</h1></div>
+                <div class="card">
+                    <h3 style="margin-bottom:16px">CSV Olarak Disa Aktar</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Son Kac Gun</label>
+                            <input type="number" id="exportDays" value="30" min="1" max="365">
+                        </div>
+                        <div class="form-group">
+                            <label>Cihaz Filtresi (Opsiyonel)</label>
+                            <select id="exportDevice"><option value="">Tum Cihazlar</option></select>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">
+                        <button class="btn btn-primary" onclick="exportCsv('sms')">SMS Verisi</button>
+                        <button class="btn btn-success" onclick="exportCsv('devices')">Cihaz Verisi</button>
+                        <button class="btn btn-warning" onclick="exportCsv('audit')">Denetim Loglari</button>
+                    </div>
+                    <div id="exportResult" style="margin-top:12px"></div>
+                </div>
+            </div>
+
+            <!-- SMS KUYRUK GORSELLEŞTIRME -->
+            <div class="section" id="sec-queue">
+                <div class="header"><h1>SMS Kuyruk Izleme</h1><button class="btn btn-primary btn-sm" onclick="loadQueueStats()">Yenile</button></div>
+                <div class="stats-grid" id="queueStatsGrid"></div>
+                <div class="card">
+                    <h3 style="margin-bottom:12px">Cihaz Bazli Kuyruk</h3>
+                    <div id="deviceQueueTable"></div>
+                </div>
+                <div class="card" style="margin-top:16px">
+                    <h3 style="margin-bottom:12px">Dakika Bazli Throughput (Son 1 Saat)</h3>
+                    <div id="throughputChart" style="overflow-x:auto"></div>
+                </div>
+                <div class="card" style="margin-top:16px">
+                    <h3 style="margin-bottom:12px">Kuyruk Derinligi Trendi (24 Saat)</h3>
+                    <div id="queueTrendChart" style="overflow-x:auto"></div>
+                </div>
+            </div>
+
+            <!-- UZAKTAN KOMUT -->
+            <div class="section" id="sec-remote-cmd">
+                <div class="header"><h1>Cihaz Uzaktan Komut</h1></div>
+                <div class="card">
+                    <h3 style="margin-bottom:16px">Yeni Komut Gonder</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Cihaz</label>
+                            <select id="cmdDevice"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Komut Tipi</label>
+                            <select id="cmdType">
+                                <option value="restart_service">Servisi Yeniden Baslat</option>
+                                <option value="sync_config">Ayarlari Senkronize Et</option>
+                                <option value="update_app">Uygulamayi Guncelle</option>
+                                <option value="clear_queue">Kuyrugu Temizle</option>
+                                <option value="send_log">Log Gonder</option>
+                                <option value="custom">Ozel Komut</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Sure Asimi (dakika)</label>
+                            <input type="number" id="cmdExpires" value="30" min="1" max="1440">
+                        </div>
+                        <div class="form-group">
+                            <label>Payload (JSON, opsiyonel)</label>
+                            <input type="text" id="cmdPayload" placeholder='{"key":"value"}'>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="sendDeviceCommand()">Komut Gonder</button>
+                </div>
+                <div class="card" style="margin-top:16px">
+                    <h3 style="margin-bottom:12px">Komut Gecmisi</h3>
+                    <div class="form-row" style="margin-bottom:12px">
+                        <select id="cmdFilterDevice" onchange="loadDeviceCommands()"><option value="">Tum Cihazlar</option></select>
+                        <select id="cmdFilterStatus" onchange="loadDeviceCommands()">
+                            <option value="">Tum Durumlar</option>
+                            <option value="pending">Bekliyor</option>
+                            <option value="sent">Gonderildi</option>
+                            <option value="executed">Yurutuldu</option>
+                            <option value="failed">Basarisiz</option>
+                            <option value="expired">Suresi Doldu</option>
+                        </select>
+                    </div>
+                    <div id="commandsTable"></div>
+                </div>
+            </div>
+
+            <!-- OTOMATIK OLCEKLENDIRME -->
+            <div class="section" id="sec-autoscale">
+                <div class="header"><h1>Otomatik Olceklendirme</h1></div>
+                <div class="card">
+                    <h3 style="margin-bottom:16px">Yeni Kural Ekle</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Kural Adi</label>
+                            <input type="text" id="asRuleName" placeholder="Kuyruk bazli olcekleme">
+                        </div>
+                        <div class="form-group">
+                            <label>Metrik</label>
+                            <select id="asMetric">
+                                <option value="queue_size">Kuyruk Boyutu</option>
+                                <option value="fail_rate">Basarisizlik Orani (%)</option>
+                                <option value="response_time">Yanit Suresi (sn)</option>
+                                <option value="throughput">Throughput (5dk)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Scale Up Esigi</label>
+                            <input type="number" id="asScaleUp" value="100" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Scale Down Esigi</label>
+                            <input type="number" id="asScaleDown" value="10" min="0">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Min Cihaz</label>
+                            <input type="number" id="asMinDevices" value="1" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Max Cihaz</label>
+                            <input type="number" id="asMaxDevices" value="10" min="1">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Bekleme Suresi (dakika)</label>
+                        <input type="number" id="asCooldown" value="5" min="1" max="60">
+                    </div>
+                    <button class="btn btn-primary" onclick="createAutoscaleRule()">Kural Ekle</button>
+                </div>
+                <div class="card" style="margin-top:16px">
+                    <h3 style="margin-bottom:12px">Aktif Kurallar</h3>
+                    <div id="autoscaleRulesTable"></div>
+                </div>
+                <div class="card" style="margin-top:16px">
+                    <h3 style="margin-bottom:12px">Olcekleme Gecmisi</h3>
+                    <div id="autoscaleHistoryTable"></div>
+                </div>
+            </div>
+
+            <!-- DURUM SAYFASI -->
+            <div class="section" id="sec-status-page">
+                <div class="header"><h1>Sistem Durumu</h1><button class="btn btn-primary btn-sm" onclick="loadSystemStatus()">Yenile</button></div>
+                <div class="card">
+                    <h3 style="margin-bottom:16px">Bilesen Durumlari</h3>
+                    <div id="componentStatusTable"></div>
+                </div>
+                <div class="card" style="margin-top:16px">
+                    <h3 style="margin-bottom:16px">Durum Guncelle</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Bilesen</label>
+                            <select id="statusComponent">
+                                <option value="api">API</option>
+                                <option value="database">Veritabani</option>
+                                <option value="sms_sending">SMS Gonderim</option>
+                                <option value="device_network">Cihaz Agi</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Durum</label>
+                            <select id="statusValue">
+                                <option value="operational">Calisiyor</option>
+                                <option value="degraded">Dusuk Performans</option>
+                                <option value="partial_outage">Kismi Kesinti</option>
+                                <option value="major_outage">Buyuk Kesinti</option>
+                                <option value="maintenance">Bakim</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Mesaj</label>
+                        <input type="text" id="statusMessage" placeholder="Durum mesaji...">
+                    </div>
+                    <button class="btn btn-warning" onclick="updateComponentStatus()">Durumu Guncelle</button>
+                </div>
+                <div class="card" style="margin-top:16px">
+                    <h3 style="margin-bottom:16px">Yeni Olay Olustur</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Baslik</label>
+                            <input type="text" id="incidentTitle" placeholder="Olay basligi">
+                        </div>
+                        <div class="form-group">
+                            <label>Ciddiyet</label>
+                            <select id="incidentSeverity">
+                                <option value="minor">Dusuk</option>
+                                <option value="major">Orta</option>
+                                <option value="critical">Kritik</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Aciklama</label>
+                        <textarea id="incidentDesc" rows="3" placeholder="Olay aciklamasi..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Etkilenen Bilesenler</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" value="api" class="incidentComp"> API</label>
+                            <label><input type="checkbox" value="database" class="incidentComp"> Veritabani</label>
+                            <label><input type="checkbox" value="sms_sending" class="incidentComp"> SMS Gonderim</label>
+                            <label><input type="checkbox" value="device_network" class="incidentComp"> Cihaz Agi</label>
+                        </div>
+                    </div>
+                    <button class="btn btn-danger" onclick="createIncident()">Olay Olustur</button>
+                </div>
+                <div class="card" style="margin-top:16px">
+                    <h3 style="margin-bottom:12px">Olay Gecmisi</h3>
+                    <div id="incidentsTable"></div>
+                </div>
+            </div>
+
+            <!-- API VERSIYON -->
+            <div class="section" id="sec-api-versions">
+                <div class="header"><h1>API Versiyonlari</h1></div>
+                <div class="card">
+                    <h3 style="margin-bottom:16px">Versiyon Yonetimi</h3>
+                    <div id="apiVersionsTable"></div>
+                </div>
+                <div class="card" style="margin-top:16px">
+                    <h3 style="margin-bottom:16px">Yeni Versiyon Ekle / Guncelle</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Versiyon</label>
+                            <input type="text" id="avVersion" placeholder="v3">
+                        </div>
+                        <div class="form-group">
+                            <label>Varsayilan</label>
+                            <select id="avDefault"><option value="0">Hayir</option><option value="1">Evet</option></select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Degisiklik Notu</label>
+                        <textarea id="avChangelog" rows="3" placeholder="Bu versiyondaki degisiklikler..."></textarea>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveApiVersion()">Kaydet</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+// API URL otomatik tespit: admin.html ile ayni dizindeki api.php
+const API_URL = (function() {
+    const path = window.location.pathname;
+    const dir = path.substring(0, path.lastIndexOf('/') + 1);
+    return window.location.origin + dir + 'api.php';
+})();
+let ADMIN_TOKEN = '';
+let allDevices = [];
+let allTemplates = [];
+let selectedTemplateId = null;
+let historyPage = 1;
+let incomingSmsPage = 1;
+let auditLogPage = 1;
+
+// === AUTH ===
+function doLogin() {
+    ADMIN_TOKEN = document.getElementById('loginToken').value.trim();
+    if (!ADMIN_TOKEN) { showLoginError('Admin token girin'); return; }
+    api('stats').then(d => {
+        if (d.success) {
+            localStorage.setItem('sms_admin_token', ADMIN_TOKEN);
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('app').style.display = 'block';
+            loadDashboard();
+        } else { showLoginError(d.error || 'Giris basarisiz'); }
+    }).catch(e => showLoginError('Baglanti hatasi: ' + e.message));
+}
+function doLogout() { localStorage.removeItem('sms_admin_token'); location.reload(); }
+function showLoginError(msg) { const el = document.getElementById('loginError'); el.textContent = msg; el.style.display = 'block'; }
+
+// Auto login
+(function() {
+    const t = localStorage.getItem('sms_admin_token');
+    if (t) { ADMIN_TOKEN = t;
+        api('stats').then(d => { if(d.success) { document.getElementById('loginContainer').style.display='none'; document.getElementById('app').style.display='block'; loadDashboard(); }}).catch(()=>{});
+    }
+})();
+
+// === API ===
+async function api(endpoint, method='GET', body=null) {
+    const opts = { method, headers: { 'X-Admin-Token': ADMIN_TOKEN, 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const sep = API_URL.includes('?') ? '&' : '?';
+    const r = await fetch(API_URL + sep + 'request=' + endpoint, opts);
+    return r.json();
+}
+
+// === NAV ===
+function showSection(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+    document.getElementById('sec-' + id).classList.add('active');
+    event.target.closest('a').classList.add('active');
+    if (id === 'dashboard') loadDashboard();
+    if (id === 'devices') loadDevices();
+    if (id === 'templates') loadTemplates();
+    if (id === 'send') { loadDeviceDropdowns(); loadTemplateDropdowns(); }
+    if (id === 'distribute') { loadDistributeDevices(); loadDistributeTemplates(); }
+    if (id === 'history') { loadDeviceDropdowns(); loadHistory(); }
+    if (id === 'contacts') loadContacts();
+    if (id === 'blacklist') loadBlacklist();
+    if (id === 'incoming-sms') { loadIncomingDeviceDropdown(); loadIncomingSms(); }
+    if (id === 'auto-reply') loadAutoReplyRules();
+    if (id === 'otp') loadOtpDeviceDropdown();
+    if (id === 'shortlinks') loadShortLinks();
+    if (id === 'anomaly') { loadAnomalyRules(); loadAnomalyEvents(); }
+    if (id === 'alerts') loadAlertChannels();
+    if (id === 'cost') loadCostReport();
+    if (id === 'scores') loadDeviceScores();
+    if (id === 'heatmap') loadHeatmap();
+    if (id === 'uptime') loadUptime();
+    if (id === 'logs') loadAuditLogs();
+    if (id === 'export') loadExportDeviceDropdown();
+    if (id === 'loadbalance') loadLbDevices();
+    if (id === 'queue') loadQueueStats();
+    if (id === 'remote-cmd') { loadCmdDeviceDropdowns(); loadDeviceCommands(); }
+    if (id === 'autoscale') { loadAutoscaleRules(); loadAutoscaleHistory(); }
+    if (id === 'status-page') { loadSystemStatus(); loadIncidents(); }
+    if (id === 'api-versions') loadApiVersions();
+}
+
+// === TOAST ===
+function toast(msg, type='success') {
+    const el = document.createElement('div');
+    el.className = 'toast toast-' + type;
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+}
+
+// === DASHBOARD ===
+async function loadDashboard() {
+    const d = await api('stats');
+    if (!d.success) return;
+    const o = d.overall;
+    document.getElementById('statsGrid').innerHTML = `
+        <div class="stat-card"><div class="label">Toplam SMS</div><div class="value blue">${o.total||0}</div></div>
+        <div class="stat-card"><div class="label">Gonderilen</div><div class="value green">${o.sent||0}</div></div>
+        <div class="stat-card"><div class="label">Basarisiz</div><div class="value red">${o.failed||0}</div></div>
+        <div class="stat-card"><div class="label">Bekleyen</div><div class="value orange">${o.pending||0}</div></div>
+        <div class="stat-card"><div class="label">Teslim Edilen</div><div class="value green">${o.delivered||0}</div></div>
+        <div class="stat-card"><div class="label">Aktif Cihaz</div><div class="value blue">${d.active_devices||0}</div></div>
+    `;
+    let trend = '<table><tr><th>Tarih</th><th>Toplam</th><th>Basarili</th><th>Basarisiz</th></tr>';
+    (d.weekly_trend||[]).forEach(w => { trend += `<tr><td>${w.date}</td><td>${w.total}</td><td>${w.sent}</td><td>${w.failed}</td></tr>`; });
+    trend += '</table>';
+    document.getElementById('weeklyTrend').innerHTML = trend || '<p class="empty">Veri yok</p>';
+    const h = await api('device-health');
+    if (h.success) {
+        let ht = '<table><tr><th>Cihaz</th><th>Durum</th><th>Son Gorulme</th></tr>';
+        (h.devices||[]).forEach(dv => {
+            const badge = dv.health_status === 'online' ? 'badge-green' : dv.health_status === 'offline' ? 'badge-red' : 'badge-gray';
+            const label = dv.health_status === 'online' ? 'Online' : dv.health_status === 'offline' ? 'Offline' : 'Baglanti Yok';
+            ht += `<tr><td>${esc(dv.device_name||dv.device_id)}</td><td><span class="badge ${badge}">${label}</span></td><td>${dv.last_seen||'-'}</td></tr>`;
+        });
+        ht += '</table>';
+        document.getElementById('deviceHealthTable').innerHTML = ht;
+    }
+}
+
+// === DEVICES ===
+async function loadDevices() {
+    const d = await api('devices');
+    if (!d.success) return;
+    allDevices = d.devices || [];
+    let html = '';
+    allDevices.forEach(dv => {
+        const active = dv.is_active == 1;
+        const online = dv.last_seen && (Date.now() - new Date(dv.last_seen).getTime()) < 300000;
+        html += `<div class="card" style="margin-bottom:12px;border-left:4px solid ${active?(online?'var(--success)':'var(--warning)'):'var(--danger)'}">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+                <div>
+                    <h3 style="margin-bottom:4px">${esc(dv.device_name||dv.device_id)}</h3>
+                    <code style="font-size:11px;color:var(--muted)">${esc(dv.device_id)}</code>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <span class="badge ${active?(online?'badge-green':'badge-yellow'):'badge-red'}">${active?(online?'Online':'Offline'):'Pasif'}</span>
+                    <button class="btn btn-sm ${active?'btn-danger':'btn-success'}" onclick="toggleDevice('${esc(dv.device_id)}', ${!active})">${active?'Durdur':'Baslat'}</button>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:12px;font-size:13px">
+                <div><span style="color:var(--muted)">Telefon:</span> ${esc(dv.phone_number||'-')}</div>
+                <div><span style="color:var(--muted)">Model:</span> ${esc(dv.device_brand?dv.device_brand+' '+dv.device_model:'-')}</div>
+                <div><span style="color:var(--muted)">Android:</span> ${esc(dv.android_version||'-')} ${dv.sdk_version?'(SDK '+dv.sdk_version+')':''}</div>
+                <div><span style="color:var(--muted)">IMEI:</span> ${esc(dv.imei||'-')}</div>
+                <div><span style="color:var(--muted)">IMEI 2:</span> ${esc(dv.imei2||'-')}</div>
+                <div><span style="color:var(--muted)">HWID:</span> ${esc(dv.hardware_id?dv.hardware_id.substring(0,16)+'...':'-')}</div>
+                <div><span style="color:var(--muted)">Ekran:</span> ${esc(dv.display_resolution||'-')}</div>
+                <div><span style="color:var(--muted)">Uygulama:</span> ${esc(dv.app_version||'-')}</div>
+                <div><span style="color:var(--muted)">Son Gorulme:</span> ${dv.last_seen||'-'}</div>
+                <div><span style="color:var(--muted)">Kayit:</span> ${(dv.created_at||'').slice(0,10)}</div>
+            </div>
+            <div style="display:flex;gap:16px;margin-top:12px;font-size:13px;padding-top:12px;border-top:1px solid var(--border)">
+                <div><span class="badge badge-yellow">${dv.pending_count||0} Bekleyen</span></div>
+                <div><span class="badge badge-green">${dv.sent_count||0} Gonderilen</span></div>
+                <div><span class="badge badge-red">${dv.failed_count||0} Basarisiz</span></div>
+                <div><span style="color:var(--muted)">Skor: <strong>${dv.performance_score||'-'}</strong></span></div>
+                <div><span style="color:var(--muted)">Agirlik: ${dv.weight||100}</span></div>
+            </div>
+        </div>`;
+    });
+    document.getElementById('deviceList').innerHTML = html || '<p class="empty">Cihaz bulunamadi</p>';
+}
+async function toggleDevice(id, active) {
+    const d = await api('device-toggle', 'POST', { device_id: id, is_active: active });
+    toast(d.success ? 'Cihaz durumu guncellendi' : (d.error||'Hata'), d.success?'success':'error');
+    loadDevices();
+}
+
+// === SEND SINGLE SMS ===
+async function loadDeviceDropdowns() {
+    const d = await api('devices');
+    allDevices = d.devices || [];
+    ['sendDevice','historyDevice'].forEach(selId => {
+        const sel = document.getElementById(selId);
+        if (!sel) return;
+        const firstOpt = sel.options[0];
+        sel.innerHTML = '';
+        if (selId === 'historyDevice') sel.appendChild(firstOpt);
+        allDevices.filter(dv=>dv.is_active==1).forEach(dv => {
+            const o = document.createElement('option');
+            o.value = dv.device_id;
+            o.textContent = (dv.device_name||dv.device_id) + ' (' + dv.device_id + ')';
+            sel.appendChild(o);
+        });
+    });
+}
+async function loadTemplateDropdowns() {
+    const d = await api('templates');
+    allTemplates = d.templates || [];
+    const sel = document.getElementById('sendTemplate');
+    sel.innerHTML = '<option value="">-- Sablon Sec --</option>';
+    allTemplates.forEach(t => {
+        const o = document.createElement('option');
+        o.value = t.id;
+        o.textContent = t.name;
+        sel.appendChild(o);
+    });
+}
+document.getElementById('sendMessage').addEventListener('input', function() {
+    document.getElementById('sendCharCount').textContent = this.value.length + ' karakter';
+});
+document.getElementById('sendTemplate').addEventListener('change', function() {
+    if (this.value) {
+        const t = allTemplates.find(t => t.id == this.value);
+        if (t) document.getElementById('sendMessage').value = t.content;
+    }
+});
+async function sendSingleSms() {
+    const body = { device_id: document.getElementById('sendDevice').value, phone_number: document.getElementById('sendPhone').value, message: document.getElementById('sendMessage').value, priority: parseInt(document.getElementById('sendPriority').value) || 5 };
+    const tpl = document.getElementById('sendTemplate').value;
+    if (tpl) body.template_id = parseInt(tpl);
+    const d = await api('send-sms', 'POST', body);
+    toast(d.success ? 'SMS kuyruga eklendi (#' + d.request_id + ')' : (d.error||'Hata'), d.success?'success':'error');
+}
+
+// === DISTRIBUTE ===
+async function loadDistributeDevices() {
+    const d = await api('devices');
+    allDevices = d.devices || [];
+    let html = '';
+    allDevices.filter(dv=>dv.is_active==1).forEach(dv => {
+        html += `<div class="device-checkbox">
+            <input type="checkbox" id="ddev_${dv.device_id}" value="${esc(dv.device_id)}">
+            <label for="ddev_${dv.device_id}">${esc(dv.device_name||dv.device_id)}</label>
+            <span class="status badge badge-green">Aktif</span>
+        </div>`;
+    });
+    document.getElementById('distributeDevices').innerHTML = html || '<p class="empty">Aktif cihaz yok</p>';
+}
+function selectAllDevices() {
+    document.querySelectorAll('#distributeDevices input[type=checkbox]').forEach(cb => cb.checked = true);
+}
+async function loadDistributeTemplates() {
+    const d = await api('templates');
+    allTemplates = d.templates || [];
+    let html = '';
+    allTemplates.forEach(t => {
+        const vars = t.variables ? JSON.parse(t.variables) : [];
+        html += `<div class="template-card" onclick="selectDistTemplate(${t.id}, this)" data-id="${t.id}">
+            <h4>${esc(t.name)}</h4>
+            <p>${esc(t.content.substring(0,80))}${t.content.length>80?'...':''}</p>
+            ${vars.length ? '<small style="color:var(--primary)">Degiskenler: ' + vars.join(', ') + '</small>' : ''}
+        </div>`;
+    });
+    document.getElementById('templateCards').innerHTML = html || '<p class="empty">Sablon yok. Sablon sekmesinden olusturun.</p>';
+}
+function selectDistTemplate(id, el) {
+    document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedTemplateId = id;
+    const t = allTemplates.find(t => t.id == id);
+    if (t) {
+        const vars = t.variables ? JSON.parse(t.variables) : [];
+        if (vars.length) {
+            let vh = '';
+            vars.forEach(v => { vh += `<div class="form-group"><label>{{${v}}}</label><input type="text" id="tvar_${v}" placeholder="${v}"></div>`; });
+            document.getElementById('templateVars').innerHTML = vh;
+            document.getElementById('templateVarsContainer').style.display = 'block';
+        } else {
+            document.getElementById('templateVarsContainer').style.display = 'none';
+        }
+    }
+}
+function switchMsgTab(btn, tab) {
+    document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('msgTabManual').style.display = tab === 'manual' ? 'block' : 'none';
+    document.getElementById('msgTabTemplate').style.display = tab === 'template' ? 'block' : 'none';
+    if (tab === 'manual') selectedTemplateId = null;
+}
+document.getElementById('distributeMessage').addEventListener('input', function() {
+    document.getElementById('distCharCount').textContent = this.value.length + ' karakter';
+});
+document.getElementById('distributeNumbers').addEventListener('input', function() {
+    const lines = this.value.split(/[\r\n]+/).filter(l => l.trim());
+    const preview = document.getElementById('numberPreview');
+    if (lines.length > 0) {
+        preview.style.display = 'block';
+        preview.textContent = lines.length + ' numara girildi';
+    } else {
+        preview.style.display = 'none';
+    }
+});
+
+async function distributeSms() {
+    const btn = document.getElementById('distributeBtn');
+    btn.disabled = true;
+    btn.textContent = 'Gonderiliyor...';
+
+    const deviceIds = [];
+    document.querySelectorAll('#distributeDevices input:checked').forEach(cb => deviceIds.push(cb.value));
+    if (deviceIds.length === 0) { toast('En az bir cihaz secin', 'error'); btn.disabled = false; btn.textContent = 'Dagit ve Gonder'; return; }
+
+    const numbers = document.getElementById('distributeNumbers').value;
+    if (!numbers.trim()) { toast('Numara girin', 'error'); btn.disabled = false; btn.textContent = 'Dagit ve Gonder'; return; }
+
+    const body = { device_ids: deviceIds, phone_numbers: numbers, priority: parseInt(document.getElementById('distributePriority').value) || 5 };
+
+    if (selectedTemplateId) {
+        body.template_id = selectedTemplateId;
+        body.variables = {};
+        const t = allTemplates.find(t => t.id == selectedTemplateId);
+        if (t) {
+            const vars = t.variables ? JSON.parse(t.variables) : [];
+            vars.forEach(v => { const el = document.getElementById('tvar_' + v); if (el) body.variables[v] = el.value; });
+        }
+    } else {
+        body.message = document.getElementById('distributeMessage').value;
+    }
+
+    try {
+        const d = await api('distribute-sms', 'POST', body);
+        if (d.success) {
+            let resultHtml = `<div class="card" style="background:#f0fdf4;border:1px solid #86efac">
+                <h3 style="color:var(--success)">Dagitim Basarili!</h3>
+                <p>Batch ID: <code>${d.batch_id}</code></p>
+                <p>Toplam: ${d.total_numbers} numara | Eklenen: ${d.inserted} | Kara liste: ${d.blacklisted}</p>
+                <p>Cihaz sayisi: ${d.device_count}</p>
+                <h4 style="margin-top:12px">Dagitim:</h4><ul>`;
+            for (const [dev, count] of Object.entries(d.distribution || {})) {
+                resultHtml += `<li><strong>${dev}</strong>: ${count} SMS</li>`;
+            }
+            resultHtml += '</ul></div>';
+            document.getElementById('distributeResult').innerHTML = resultHtml;
+            document.getElementById('distributeResult').style.display = 'block';
+            toast('Toplu dagitim basarili!');
+        } else {
+            toast(d.error || 'Dagitim basarisiz', 'error');
+        }
+    } catch (e) {
+        toast('Hata: ' + e.message, 'error');
+    }
+    btn.disabled = false;
+    btn.textContent = 'Dagit ve Gonder';
+}
+
+// === TEMPLATES ===
+async function loadTemplates() {
+    const d = await api('templates');
+    allTemplates = d.templates || [];
+    if (allTemplates.length === 0) { document.getElementById('templateList').innerHTML = '<div class="card empty">Henuz sablon olusturulmanis.</div>'; return; }
+    let html = '<div class="card"><table><tr><th>Ad</th><th>Icerik</th><th>Degiskenler</th><th>Kullanim</th></tr>';
+    allTemplates.forEach(t => {
+        const vars = t.variables ? JSON.parse(t.variables) : [];
+        html += `<tr><td><strong>${esc(t.name)}</strong></td><td>${esc(t.content.substring(0,60))}${t.content.length>60?'...':''}</td><td>${vars.join(', ')||'-'}</td><td>${t.usage_count}</td></tr>`;
+    });
+    html += '</table></div>';
+    document.getElementById('templateList').innerHTML = html;
+}
+function toggleNewTemplate() {
+    const f = document.getElementById('newTemplateForm');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+async function createTemplate() {
+    const vars = document.getElementById('tplVars').value.split(',').map(v=>v.trim()).filter(v=>v);
+    const d = await api('template-create', 'POST', { name: document.getElementById('tplName').value, content: document.getElementById('tplContent').value, variables: vars });
+    toast(d.success ? 'Sablon olusturuldu' : (d.error||'Hata'), d.success?'success':'error');
+    if (d.success) { toggleNewTemplate(); loadTemplates(); }
+}
+
+// === HISTORY ===
+async function loadHistory(page=1) {
+    historyPage = page;
+    let endpoint = 'sms-history&page=' + page + '&limit=20';
+    const dev = document.getElementById('historyDevice').value;
+    const status = document.getElementById('historyStatus').value;
+    if (dev) endpoint += '&device_id=' + dev;
+    if (status) endpoint += '&status=' + status;
+    const d = await api(endpoint);
+    if (!d.success) return;
+    let html = '<table><tr><th>ID</th><th>Cihaz</th><th>Numara</th><th>Durum</th><th>Oncelik</th><th>Tarih</th></tr>';
+    (d.messages||[]).forEach(m => {
+        const badge = {pending:'badge-yellow',processing:'badge-blue',sent:'badge-green',delivered:'badge-green',failed:'badge-red',cancelled:'badge-gray'}[m.status]||'badge-gray';
+        html += `<tr><td>${m.id}</td><td><code>${esc(m.device_id)}</code></td><td>${esc(m.phone_number)}</td><td><span class="badge ${badge}">${m.status}</span></td><td>${m.priority}</td><td>${m.created_at}</td></tr>`;
+    });
+    html += '</table>';
+    document.getElementById('historyTable').innerHTML = html;
+    let pag = '';
+    for (let i = 1; i <= d.total_pages; i++) {
+        pag += `<button class="btn btn-sm ${i===page?'btn-primary':''}" onclick="loadHistory(${i})" style="margin:2px">${i}</button>`;
+    }
+    document.getElementById('historyPagination').innerHTML = pag;
+}
+
+// === CONTACTS ===
+async function loadContacts() {
+    const d = await api('contacts');
+    if (!d.success) return;
+    if ((d.contacts||[]).length === 0) { document.getElementById('contactList').innerHTML = '<div class="card empty">Kisi yok</div>'; return; }
+    let html = '<div class="card"><table><tr><th>Ad</th><th>Telefon</th><th>Grup</th></tr>';
+    d.contacts.forEach(c => { html += `<tr><td>${esc(c.name)}</td><td>${esc(c.phone_number)}</td><td>${esc(c.group_name||'-')}</td></tr>`; });
+    html += '</table></div>';
+    document.getElementById('contactList').innerHTML = html;
+}
+function toggleNewContact() { const f = document.getElementById('newContactForm'); f.style.display = f.style.display==='none'?'block':'none'; }
+async function addContact() {
+    const d = await api('contact-add', 'POST', { name: document.getElementById('contactName').value, phone_number: document.getElementById('contactPhone').value, group_name: document.getElementById('contactGroup').value||null });
+    toast(d.success ? 'Kisi eklendi' : (d.error||'Hata'), d.success?'success':'error');
+    if (d.success) { toggleNewContact(); loadContacts(); }
+}
+
+// === BLACKLIST ===
+async function loadBlacklist() {
+    const d = await api('blacklist');
+    if (!d.success) return;
+    if ((d.blacklist||[]).length === 0) { document.getElementById('blacklistTable').innerHTML = '<div class="card empty">Kara liste bos</div>'; return; }
+    let html = '<div class="card"><table><tr><th>Numara</th><th>Sebep</th><th>Tarih</th><th>Islem</th></tr>';
+    d.blacklist.forEach(b => {
+        html += `<tr><td>${esc(b.phone_number)}</td><td>${esc(b.reason||'-')}</td><td>${b.created_at}</td><td><button class="btn btn-sm btn-success" onclick="removeBlacklist('${esc(b.phone_number)}')">Kaldir</button></td></tr>`;
+    });
+    html += '</table></div>';
+    document.getElementById('blacklistTable').innerHTML = html;
+}
+function toggleNewBlacklist() { const f = document.getElementById('newBlacklistForm'); f.style.display = f.style.display==='none'?'block':'none'; }
+async function addBlacklist() {
+    const d = await api('blacklist-add', 'POST', { phone_number: document.getElementById('blPhone').value, reason: document.getElementById('blReason').value||null });
+    toast(d.success ? 'Kara listeye eklendi' : (d.error||'Hata'), d.success?'success':'error');
+    if (d.success) { toggleNewBlacklist(); loadBlacklist(); }
+}
+async function removeBlacklist(phone) {
+    const d = await api('blacklist-remove&phone_number='+encodeURIComponent(phone), 'DELETE');
+    toast(d.success ? 'Kaldirildi' : (d.error||'Hata'), d.success?'success':'error');
+    loadBlacklist();
+}
+
+// === INCOMING SMS ===
+async function loadIncomingDeviceDropdown() {
+    const d = await api('devices');
+    allDevices = d.devices || [];
+    const sel = document.getElementById('incomingDevice');
+    const firstOpt = sel.options[0];
+    sel.innerHTML = '';
+    sel.appendChild(firstOpt);
+    allDevices.forEach(dv => {
+        const o = document.createElement('option');
+        o.value = dv.device_id;
+        o.textContent = (dv.device_name||dv.device_id) + ' (' + dv.device_id + ')';
+        sel.appendChild(o);
+    });
+}
+async function loadIncomingSms(page=1) {
+    incomingSmsPage = page;
+    let endpoint = 'incoming-sms&page=' + page + '&limit=20';
+    const dev = document.getElementById('incomingDevice').value;
+    const readFilter = document.getElementById('incomingReadFilter').value;
+    if (dev) endpoint += '&device_id=' + encodeURIComponent(dev);
+    if (readFilter !== '') endpoint += '&is_read=' + readFilter;
+    const d = await api(endpoint);
+    if (!d.success) { document.getElementById('incomingSmsTable').innerHTML = '<p class="empty">Veri yuklenemedi</p>'; return; }
+    const messages = d.messages || d.incoming || [];
+    if (messages.length === 0) { document.getElementById('incomingSmsTable').innerHTML = '<p class="empty">Gelen SMS yok</p>'; document.getElementById('incomingSmsPagination').innerHTML = ''; return; }
+    let html = '<table><tr><th>Cihaz</th><th>Gonderen</th><th>Mesaj</th><th>Tarih</th><th>Okundu</th><th>Oto Yanit</th></tr>';
+    messages.forEach(m => {
+        const readBadge = m.is_read == 1 ? '<span class="badge badge-green">Evet</span>' : '<span class="badge badge-yellow">Hayir</span>';
+        const replyBadge = m.auto_reply_sent == 1 ? '<span class="badge badge-blue">Gonderildi</span>' : '<span class="badge badge-gray">-</span>';
+        html += `<tr>
+            <td><code>${esc(m.device_id||'')}</code></td>
+            <td>${esc(m.sender_number||m.from_number||'')}</td>
+            <td>${esc((m.message||'').substring(0,80))}${(m.message||'').length>80?'...':''}</td>
+            <td>${m.received_at||m.created_at||'-'}</td>
+            <td>${readBadge}</td>
+            <td>${replyBadge}</td>
+        </tr>`;
+    });
+    html += '</table>';
+    document.getElementById('incomingSmsTable').innerHTML = html;
+    let pag = '';
+    const totalPages = d.total_pages || 1;
+    for (let i = 1; i <= totalPages; i++) {
+        pag += `<button class="btn btn-sm ${i===page?'btn-primary':''}" onclick="loadIncomingSms(${i})" style="margin:2px">${i}</button>`;
+    }
+    document.getElementById('incomingSmsPagination').innerHTML = pag;
+}
+
+// === AUTO REPLY ===
+function toggleNewAutoReply() {
+    const f = document.getElementById('newAutoReplyForm');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+async function loadAutoReplyRules() {
+    const d = await api('auto-reply-rules');
+    if (!d.success) { document.getElementById('autoReplyList').innerHTML = '<div class="card empty">Veri yuklenemedi</div>'; return; }
+    const rules = d.rules || [];
+    if (rules.length === 0) { document.getElementById('autoReplyList').innerHTML = '<div class="card empty">Henuz otomatik yanit kurali yok</div>'; return; }
+    let html = '<div class="card"><table><tr><th>Anahtar Kelime</th><th>Eslestirme</th><th>Yanit Mesaji</th><th>Islem</th></tr>';
+    const matchLabels = { exact: 'Tam', contains: 'Icerir', starts_with: 'Ile Baslar', regex: 'Regex' };
+    rules.forEach(r => {
+        html += `<tr>
+            <td><strong>${esc(r.keyword)}</strong></td>
+            <td><span class="badge badge-blue">${matchLabels[r.match_type]||r.match_type}</span></td>
+            <td>${esc((r.reply_message||'').substring(0,60))}${(r.reply_message||'').length>60?'...':''}</td>
+            <td><button class="btn btn-sm btn-danger" onclick="deleteAutoReplyRule(${r.id})">Sil</button></td>
+        </tr>`;
+    });
+    html += '</table></div>';
+    document.getElementById('autoReplyList').innerHTML = html;
+}
+async function createAutoReplyRule() {
+    const body = {
+        keyword: document.getElementById('arKeyword').value,
+        match_type: document.getElementById('arMatchType').value,
+        reply_message: document.getElementById('arReplyMessage').value
+    };
+    if (!body.keyword || !body.reply_message) { toast('Tum alanlari doldurun', 'error'); return; }
+    const d = await api('auto-reply-rule', 'POST', body);
+    toast(d.success ? 'Kural olusturuldu' : (d.error||'Hata'), d.success?'success':'error');
+    if (d.success) { toggleNewAutoReply(); loadAutoReplyRules(); }
+}
+async function deleteAutoReplyRule(id) {
+    const d = await api('auto-reply-rule&id=' + id, 'DELETE');
+    toast(d.success ? 'Kural silindi' : (d.error||'Hata'), d.success?'success':'error');
+    loadAutoReplyRules();
+}
+
+// === OTP ===
+async function loadOtpDeviceDropdown() {
+    const d = await api('devices');
+    allDevices = d.devices || [];
+    const sel = document.getElementById('otpDevice');
+    sel.innerHTML = '';
+    allDevices.filter(dv=>dv.is_active==1).forEach(dv => {
+        const o = document.createElement('option');
+        o.value = dv.device_id;
+        o.textContent = (dv.device_name||dv.device_id) + ' (' + dv.device_id + ')';
+        sel.appendChild(o);
+    });
+}
+async function sendOtp() {
+    const body = {
+        phone_number: document.getElementById('otpPhone').value,
+        device_id: document.getElementById('otpDevice').value,
+        purpose: document.getElementById('otpPurpose').value,
+        length: parseInt(document.getElementById('otpLength').value) || 6,
+        ttl_seconds: parseInt(document.getElementById('otpTtl').value) || 300
+    };
+    const msgTpl = document.getElementById('otpMessageTemplate').value.trim();
+    if (msgTpl) body.message_template = msgTpl;
+    if (!body.phone_number || !body.purpose) { toast('Telefon ve amac alanlari zorunlu', 'error'); return; }
+    const d = await api('send-otp', 'POST', body);
+    if (d.success) {
+        document.getElementById('otpSendResult').innerHTML = `<div class="card" style="background:#f0fdf4;border:1px solid #86efac">
+            <p style="color:var(--success);font-weight:600">OTP basariyla gonderildi!</p>
+            <p>Telefon: <strong>${esc(body.phone_number)}</strong></p>
+            <p>Gecerlilik: <strong>${body.ttl_seconds} saniye</strong></p>
+            ${d.expires_at ? '<p>Son Gecerlilik: <strong>' + d.expires_at + '</strong></p>' : ''}
+        </div>`;
+        toast('OTP gonderildi');
+    } else {
+        document.getElementById('otpSendResult').innerHTML = '';
+        toast(d.error || 'OTP gonderilemedi', 'error');
+    }
+}
+async function verifyOtp() {
+    const body = {
+        phone_number: document.getElementById('otpVerifyPhone').value,
+        code: document.getElementById('otpVerifyCode').value,
+        purpose: document.getElementById('otpVerifyPurpose').value
+    };
+    if (!body.phone_number || !body.code || !body.purpose) { toast('Tum alanlari doldurun', 'error'); return; }
+    const d = await api('verify-otp', 'POST', body);
+    if (d.success) {
+        document.getElementById('otpVerifyResult').innerHTML = `<div class="card" style="background:#f0fdf4;border:1px solid #86efac">
+            <p style="color:var(--success);font-weight:600">OTP dogrulandi!</p>
+        </div>`;
+        toast('OTP dogrulandi');
+    } else {
+        document.getElementById('otpVerifyResult').innerHTML = `<div class="card" style="background:#fee2e2;border:1px solid #fca5a5">
+            <p style="color:var(--danger);font-weight:600">${esc(d.error||'Dogrulama basarisiz')}</p>
+        </div>`;
+        toast(d.error || 'Dogrulama basarisiz', 'error');
+    }
+}
+
+// === SHORT LINKS ===
+function toggleNewShortLink() {
+    const f = document.getElementById('newShortLinkForm');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+async function loadShortLinks() {
+    const d = await api('short-links');
+    if (!d.success) { document.getElementById('shortLinkList').innerHTML = '<div class="card empty">Veri yuklenemedi</div>'; return; }
+    const links = d.links || d.short_links || [];
+    if (links.length === 0) { document.getElementById('shortLinkList').innerHTML = '<div class="card empty">Henuz kisa link yok</div>'; return; }
+    let html = '<div class="card"><table><tr><th>Kisa Kod</th><th>Orijinal URL</th><th>Tiklanma</th><th>Son Gecerlilik</th></tr>';
+    links.forEach(l => {
+        html += `<tr>
+            <td><code>${esc(l.short_code)}</code></td>
+            <td><a href="${esc(l.original_url)}" target="_blank" rel="noopener noreferrer">${esc((l.original_url||'').substring(0,50))}${(l.original_url||'').length>50?'...':''}</a></td>
+            <td><span class="badge badge-blue">${l.click_count||0}</span></td>
+            <td>${l.expires_at||'-'}</td>
+        </tr>`;
+    });
+    html += '</table></div>';
+    document.getElementById('shortLinkList').innerHTML = html;
+}
+async function createShortLink() {
+    const body = {
+        url: document.getElementById('slUrl').value,
+        ttl_hours: parseInt(document.getElementById('slTtl').value) || 24
+    };
+    if (!body.url) { toast('URL girin', 'error'); return; }
+    const d = await api('create-short-link', 'POST', body);
+    if (d.success) {
+        toast('Kisa link olusturuldu');
+        toggleNewShortLink();
+        loadShortLinks();
+    } else {
+        toast(d.error || 'Link olusturulamadi', 'error');
+    }
+}
+
+// === ANOMALY DETECTION ===
+function toggleNewAnomalyRule() {
+    const f = document.getElementById('newAnomalyRuleForm');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+async function loadAnomalyRules() {
+    const d = await api('anomaly-rules');
+    if (!d.success) { document.getElementById('anomalyRulesList').innerHTML = '<p class="empty">Veri yuklenemedi</p>'; return; }
+    const rules = d.rules || [];
+    if (rules.length === 0) { document.getElementById('anomalyRulesList').innerHTML = '<p class="empty">Henuz anomali kurali yok</p>'; return; }
+    let html = '<table><tr><th>Ad</th><th>Metrik</th><th>Kosul</th><th>Esik</th><th>Pencere</th><th>Onem</th></tr>';
+    const sevBadges = { critical: 'badge-red', warning: 'badge-yellow', info: 'badge-blue' };
+    const sevLabels = { critical: 'Kritik', warning: 'Uyari', info: 'Bilgi' };
+    const opLabels = { gt: '>', lt: '<', gte: '>=', lte: '<=' };
+    rules.forEach(r => {
+        html += `<tr>
+            <td><strong>${esc(r.name||r.rule_name||'')}</strong></td>
+            <td>${esc(r.metric)}</td>
+            <td>${opLabels[r.operator]||r.operator}</td>
+            <td>${r.threshold}</td>
+            <td>${r.window_minutes||r.time_window||'-'} dk</td>
+            <td><span class="badge ${sevBadges[r.severity]||'badge-gray'}">${sevLabels[r.severity]||r.severity}</span></td>
+        </tr>`;
+    });
+    html += '</table>';
+    document.getElementById('anomalyRulesList').innerHTML = html;
+}
+async function loadAnomalyEvents() {
+    const d = await api('anomaly-events');
+    if (!d.success) { document.getElementById('anomalyEvents').innerHTML = '<p class="empty">Veri yuklenemedi</p>'; return; }
+    const events = d.events || [];
+    if (events.length === 0) { document.getElementById('anomalyEvents').innerHTML = '<p class="empty">Aktif anomali yok</p>'; return; }
+    let html = '';
+    events.forEach(ev => {
+        const sevClass = ev.severity === 'critical' ? 'alert-critical' : ev.severity === 'warning' ? 'alert-warning' : 'alert-info';
+        const sevLabel = ev.severity === 'critical' ? 'Kritik' : ev.severity === 'warning' ? 'Uyari' : 'Bilgi';
+        const resolved = ev.resolved_at || ev.is_resolved;
+        html += `<div class="alert-card ${sevClass}">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <strong>${esc(ev.rule_name||ev.name||'Anomali')}</strong>
+                <span class="badge ${resolved ? 'badge-green' : 'badge-red'}">${resolved ? 'Cozuldu' : 'Aktif'}</span>
+            </div>
+            <p style="font-size:13px;color:var(--muted)">${esc(ev.description||ev.message||'')}</p>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+                <small style="color:var(--muted)">${ev.detected_at||ev.created_at||'-'}</small>
+                ${!resolved ? `<button class="btn btn-sm btn-success" onclick="resolveAnomaly(${ev.id})">Cozuldu Isaretle</button>` : ''}
+            </div>
+        </div>`;
+    });
+    document.getElementById('anomalyEvents').innerHTML = html;
+}
+async function createAnomalyRule() {
+    const body = {
+        name: document.getElementById('anomRuleName').value,
+        metric: document.getElementById('anomMetric').value,
+        operator: document.getElementById('anomOperator').value,
+        threshold: parseFloat(document.getElementById('anomThreshold').value),
+        window_minutes: parseInt(document.getElementById('anomWindow').value) || 60,
+        severity: document.getElementById('anomSeverity').value
+    };
+    if (!body.name) { toast('Kural adi girin', 'error'); return; }
+    const d = await api('anomaly-rule', 'POST', body);
+    toast(d.success ? 'Anomali kurali olusturuldu' : (d.error||'Hata'), d.success?'success':'error');
+    if (d.success) { toggleNewAnomalyRule(); loadAnomalyRules(); }
+}
+async function resolveAnomaly(id) {
+    const d = await api('resolve-anomaly', 'POST', { id: id });
+    toast(d.success ? 'Anomali cozuldu olarak isaretlendi' : (d.error||'Hata'), d.success?'success':'error');
+    loadAnomalyEvents();
+}
+
+// === ALERTS ===
+function toggleNewAlertChannel() {
+    const f = document.getElementById('newAlertChannelForm');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+async function loadAlertChannels() {
+    const d = await api('alert-channels');
+    if (!d.success) { document.getElementById('alertChannelList').innerHTML = '<div class="card empty">Veri yuklenemedi</div>'; return; }
+    const channels = d.channels || [];
+    if (channels.length === 0) { document.getElementById('alertChannelList').innerHTML = '<div class="card empty">Henuz uyari kanali yok</div>'; return; }
+    const typeLabels = { email: 'E-posta', sms: 'SMS', telegram: 'Telegram', slack: 'Slack', webhook: 'Webhook' };
+    const typeBadges = { email: 'badge-blue', sms: 'badge-green', telegram: 'badge-blue', slack: 'badge-yellow', webhook: 'badge-gray' };
+    let html = '<div class="card"><table><tr><th>Tip</th><th>Yapilandirma</th><th>Olaylar</th><th>Islem</th></tr>';
+    channels.forEach(ch => {
+        const configStr = typeof ch.config === 'object' ? JSON.stringify(ch.config) : (ch.config||'');
+        const events = Array.isArray(ch.events) ? ch.events : (ch.events ? [ch.events] : []);
+        html += `<tr>
+            <td><span class="badge ${typeBadges[ch.channel_type]||'badge-gray'}">${typeLabels[ch.channel_type]||ch.channel_type}</span></td>
+            <td><code style="font-size:11px">${esc(configStr.substring(0,50))}${configStr.length>50?'...':''}</code></td>
+            <td>${events.map(e => '<span class="badge badge-gray" style="margin:2px">' + esc(e) + '</span>').join(' ')}</td>
+            <td><button class="btn btn-sm btn-danger" onclick="deleteAlertChannel(${ch.id})">Sil</button></td>
+        </tr>`;
+    });
+    html += '</table></div>';
+    document.getElementById('alertChannelList').innerHTML = html;
+}
+async function createAlertChannel() {
+    let config;
+    try {
+        config = JSON.parse(document.getElementById('alertChannelConfig').value);
+    } catch (e) {
+        toast('Gecersiz JSON yapilandirmasi', 'error');
+        return;
+    }
+    const events = [];
+    document.querySelectorAll('#newAlertChannelForm .checkbox-group input:checked').forEach(cb => events.push(cb.value));
+    if (events.length === 0) { toast('En az bir olay secin', 'error'); return; }
+    const body = {
+        channel_type: document.getElementById('alertChannelType').value,
+        config: config,
+        events: events
+    };
+    const d = await api('alert-channel', 'POST', body);
+    toast(d.success ? 'Uyari kanali olusturuldu' : (d.error||'Hata'), d.success?'success':'error');
+    if (d.success) { toggleNewAlertChannel(); loadAlertChannels(); }
+}
+async function deleteAlertChannel(id) {
+    const d = await api('alert-channel&id=' + id, 'DELETE');
+    toast(d.success ? 'Kanal silindi' : (d.error||'Hata'), d.success?'success':'error');
+    loadAlertChannels();
+}
+
+// === COST ===
+async function loadCostReport() {
+    const days = parseInt(document.getElementById('costDays').value) || 30;
+    const d = await api('cost-report&days=' + days);
+    if (!d.success) { toast(d.error||'Maliyet raporu yuklenemedi', 'error'); return; }
+
+    // Stats grid
+    const summary = d.summary || {};
+    document.getElementById('costStatsGrid').innerHTML = `
+        <div class="stat-card"><div class="label">Toplam Maliyet</div><div class="value blue">${(summary.total_cost||0).toFixed(2)} TL</div></div>
+        <div class="stat-card"><div class="label">Toplam SMS</div><div class="value green">${summary.total_sms||0}</div></div>
+        <div class="stat-card"><div class="label">Ort. SMS Maliyeti</div><div class="value orange">${(summary.avg_cost_per_sms||0).toFixed(4)} TL</div></div>
+        <div class="stat-card"><div class="label">Aktif Cihaz</div><div class="value blue">${summary.active_devices||0}</div></div>
+    `;
+
+    // Daily costs
+    const daily = d.daily || [];
+    if (daily.length > 0) {
+        let html = '<table><tr><th>Tarih</th><th>SMS Sayisi</th><th>Maliyet</th></tr>';
+        daily.forEach(row => {
+            html += `<tr><td>${row.date}</td><td>${row.sms_count||0}</td><td>${(row.cost||0).toFixed(2)} TL</td></tr>`;
+        });
+        html += '</table>';
+        document.getElementById('costDailyTable').innerHTML = html;
+    } else {
+        document.getElementById('costDailyTable').innerHTML = '<p class="empty">Gunluk veri yok</p>';
+    }
+
+    // Device costs
+    const deviceCosts = d.devices || d.device_costs || [];
+    if (deviceCosts.length > 0) {
+        let html = '<table><tr><th>Cihaz</th><th>SMS Sayisi</th><th>Birim Maliyet</th><th>Toplam Maliyet</th></tr>';
+        deviceCosts.forEach(dc => {
+            html += `<tr><td><code>${esc(dc.device_id)}</code></td><td>${dc.sms_count||0}</td><td>${(dc.cost_per_sms||0).toFixed(4)} TL</td><td>${(dc.total_cost||0).toFixed(2)} TL</td></tr>`;
+        });
+        html += '</table>';
+        document.getElementById('costDeviceTable').innerHTML = html;
+    } else {
+        document.getElementById('costDeviceTable').innerHTML = '<p class="empty">Cihaz bazli veri yok</p>';
+    }
+
+    // Device cost settings
+    loadCostDeviceSettings();
+}
+async function loadCostDeviceSettings() {
+    const d = await api('devices');
+    if (!d.success) return;
+    const devices = d.devices || [];
+    let html = '<table><tr><th>Cihaz</th><th>Mevcut Birim Maliyet</th><th>Yeni Birim Maliyet (TL)</th><th>Islem</th></tr>';
+    devices.forEach(dv => {
+        html += `<tr>
+            <td><code>${esc(dv.device_id)}</code> - ${esc(dv.device_name||'-')}</td>
+            <td>${(dv.cost_per_sms||0).toFixed(4)} TL</td>
+            <td><input type="number" id="costInput_${dv.device_id}" step="0.001" min="0" value="${dv.cost_per_sms||0}" style="width:120px;margin:0"></td>
+            <td><button class="btn btn-sm btn-primary" onclick="updateDeviceCost('${esc(dv.device_id)}')">Guncelle</button></td>
+        </tr>`;
+    });
+    html += '</table>';
+    document.getElementById('costDeviceSettings').innerHTML = html;
+}
+async function updateDeviceCost(deviceId) {
+    const input = document.getElementById('costInput_' + deviceId);
+    if (!input) return;
+    const cost = parseFloat(input.value);
+    if (isNaN(cost) || cost < 0) { toast('Gecerli bir maliyet girin', 'error'); return; }
+    const d = await api('update-device-cost', 'POST', { device_id: deviceId, cost_per_sms: cost });
+    toast(d.success ? 'Cihaz maliyeti guncellendi' : (d.error||'Hata'), d.success?'success':'error');
+}
+
+// === DEVICE SCORES ===
+async function loadDeviceScores() {
+    const d = await api('device-scores');
+    if (!d.success) { document.getElementById('deviceScoresList').innerHTML = '<div class="card empty">Veri yuklenemedi</div>'; return; }
+    const scores = d.scores || d.devices || [];
+    if (scores.length === 0) { document.getElementById('deviceScoresList').innerHTML = '<div class="card empty">Cihaz skoru yok</div>'; return; }
+    let html = '';
+    scores.forEach(s => {
+        const scoreColor = s.performance_score >= 80 ? '#16a34a' : s.performance_score >= 50 ? '#d97706' : '#dc2626';
+        const successRate = s.success_rate || 0;
+        const srColor = successRate >= 90 ? '#16a34a' : successRate >= 70 ? '#d97706' : '#dc2626';
+        html += `<div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <div>
+                    <h3 style="font-size:16px">${esc(s.device_name||s.device_id)}</h3>
+                    <small style="color:var(--muted)"><code>${esc(s.device_id)}</code></small>
+                </div>
+                <div style="text-align:right">
+                    <div style="font-size:32px;font-weight:700;color:${scoreColor}">${s.performance_score||0}</div>
+                    <small style="color:var(--muted)">Performans Skoru</small>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:12px">
+                <div><small style="color:var(--muted)">Basari Orani</small><div style="font-weight:600;color:${srColor}">${successRate.toFixed(1)}%</div></div>
+                <div><small style="color:var(--muted)">Toplam Gonderilen</small><div style="font-weight:600">${s.total_sent||0}</div></div>
+                <div><small style="color:var(--muted)">Toplam Basarisiz</small><div style="font-weight:600;color:var(--danger)">${s.total_failed||0}</div></div>
+                <div><small style="color:var(--muted)">Agirlik</small><div style="font-weight:600">${s.weight||0}</div></div>
+            </div>
+            <div class="score-bar"><div class="score-bar-fill" style="width:${s.performance_score||0}%;background:${scoreColor}"></div></div>
+        </div>`;
+    });
+    document.getElementById('deviceScoresList').innerHTML = html;
+}
+
+// === HEATMAP ===
+async function loadHeatmap() {
+    const days = parseInt(document.getElementById('heatmapDays').value) || 7;
+    const d = await api('heatmap-data&days=' + days);
+    if (!d.success) { document.getElementById('heatmapGrid').innerHTML = '<p class="empty">Veri yuklenemedi</p>'; return; }
+    const data = d.heatmap || d.data || [];
+    if (data.length === 0) { document.getElementById('heatmapGrid').innerHTML = '<p class="empty">Heatmap verisi yok</p>'; return; }
+
+    // Find max for color intensity
+    let maxCount = 0;
+    data.forEach(row => {
+        (row.hours || []).forEach(h => {
+            if ((h.sent_count||h.count||0) > maxCount) maxCount = (h.sent_count||h.count||0);
+        });
+    });
+    if (maxCount === 0) maxCount = 1;
+
+    // Header row
+    let html = '<div class="heatmap-row"><div class="day-label"></div>';
+    for (let h = 0; h < 24; h++) {
+        html += `<div class="heatmap-cell" style="background:transparent;font-weight:600;color:var(--muted)">${String(h).padStart(2,'0')}</div>`;
+    }
+    html += '</div>';
+
+    // Data rows
+    data.forEach(row => {
+        html += `<div class="heatmap-row"><div class="day-label">${esc(row.date||row.day||'')}</div>`;
+        const hours = row.hours || [];
+        for (let h = 0; h < 24; h++) {
+            const hourData = hours.find(x => (x.hour||x.h) == h);
+            const count = hourData ? (hourData.sent_count||hourData.count||0) : 0;
+            const intensity = count / maxCount;
+            let bg;
+            if (count === 0) bg = '#f8fafc';
+            else if (intensity < 0.25) bg = '#bbf7d0';
+            else if (intensity < 0.5) bg = '#4ade80';
+            else if (intensity < 0.75) bg = '#16a34a';
+            else bg = '#166534';
+            const textColor = intensity >= 0.5 ? 'white' : '#1e293b';
+            html += `<div class="heatmap-cell" style="background:${bg};color:${textColor}" title="${row.date||row.day||''} ${String(h).padStart(2,'0')}:00 - ${count} SMS">${count>0?count:''}</div>`;
+        }
+        html += '</div>';
+    });
+
+    document.getElementById('heatmapGrid').innerHTML = html;
+}
+
+// === UPTIME ===
+async function loadUptime() {
+    const d = await api('uptime-status');
+    if (!d.success) { document.getElementById('uptimeStats').innerHTML = '<div class="stat-card"><div class="label">Hata</div><div class="value red">Yuklenemedi</div></div>'; return; }
+
+    const apiUptime = d.api_uptime || d.uptime_percentage || 0;
+    const avgResponse = d.avg_response_time || d.avg_response_ms || 0;
+    const uptimeColor = apiUptime >= 99 ? 'green' : apiUptime >= 95 ? 'orange' : 'red';
+    const responseColor = avgResponse < 500 ? 'green' : avgResponse < 1000 ? 'orange' : 'red';
+
+    document.getElementById('uptimeStats').innerHTML = `
+        <div class="stat-card"><div class="label">API Uptime</div><div class="value ${uptimeColor}">${apiUptime.toFixed(2)}%</div></div>
+        <div class="stat-card"><div class="label">Ort. Yanit Suresi</div><div class="value ${responseColor}">${avgResponse.toFixed(0)} ms</div></div>
+        <div class="stat-card"><div class="label">Durum</div><div class="value ${apiUptime >= 99 ? 'green' : 'red'}">${apiUptime >= 99 ? 'Saglikli' : 'Dikkat'}</div></div>
+    `;
+
+    // Device uptime
+    const devices = d.devices || [];
+    if (devices.length > 0) {
+        let html = '<table><tr><th>Cihaz</th><th>Uptime</th><th>Son Gorulme</th><th>Durum</th></tr>';
+        devices.forEach(dv => {
+            const uptime = dv.uptime_percentage || dv.uptime || 0;
+            const badge = uptime >= 99 ? 'badge-green' : uptime >= 90 ? 'badge-yellow' : 'badge-red';
+            const label = uptime >= 99 ? 'Mukemmel' : uptime >= 90 ? 'Iyi' : 'Dusuk';
+            html += `<tr>
+                <td><code>${esc(dv.device_id)}</code> - ${esc(dv.device_name||'')}</td>
+                <td><strong>${uptime.toFixed(2)}%</strong></td>
+                <td>${dv.last_seen||'-'}</td>
+                <td><span class="badge ${badge}">${label}</span></td>
+            </tr>`;
+        });
+        html += '</table>';
+        document.getElementById('uptimeDeviceTable').innerHTML = html;
+    } else {
+        document.getElementById('uptimeDeviceTable').innerHTML = '<p class="empty">Cihaz uptime verisi yok</p>';
+    }
+}
+
+// === AUDIT LOGS ===
+async function loadAuditLogs(page=1) {
+    auditLogPage = page;
+    let endpoint = 'audit-logs&page=' + page + '&limit=25';
+    const action = document.getElementById('logActionFilter').value.trim();
+    const actorType = document.getElementById('logActorType').value;
+    if (action) endpoint += '&action=' + encodeURIComponent(action);
+    if (actorType) endpoint += '&actor_type=' + encodeURIComponent(actorType);
+    const d = await api(endpoint);
+    if (!d.success) { document.getElementById('auditLogTable').innerHTML = '<p class="empty">Veri yuklenemedi</p>'; return; }
+    const logs = d.logs || [];
+    if (logs.length === 0) { document.getElementById('auditLogTable').innerHTML = '<p class="empty">Log kaydi yok</p>'; document.getElementById('auditLogPagination').innerHTML = ''; return; }
+    let html = '<table><tr><th>ID</th><th>Islem</th><th>Aktor Tipi</th><th>Aktor ID</th><th>IP Adresi</th><th>Metod</th><th>Tarih</th></tr>';
+    const actorBadges = { admin: 'badge-red', device: 'badge-green', api: 'badge-blue', system: 'badge-gray' };
+    logs.forEach(l => {
+        html += `<tr>
+            <td>${l.id}</td>
+            <td><strong>${esc(l.action)}</strong></td>
+            <td><span class="badge ${actorBadges[l.actor_type]||'badge-gray'}">${esc(l.actor_type||'-')}</span></td>
+            <td>${esc(l.actor_id||'-')}</td>
+            <td><code>${esc(l.ip_address||'-')}</code></td>
+            <td><span class="badge badge-blue">${esc(l.request_method||'-')}</span></td>
+            <td>${l.created_at||'-'}</td>
+        </tr>`;
+    });
+    html += '</table>';
+    document.getElementById('auditLogTable').innerHTML = html;
+    let pag = '';
+    const totalPages = d.total_pages || 1;
+    for (let i = 1; i <= totalPages; i++) {
+        pag += `<button class="btn btn-sm ${i===page?'btn-primary':''}" onclick="loadAuditLogs(${i})" style="margin:2px">${i}</button>`;
+    }
+    document.getElementById('auditLogPagination').innerHTML = pag;
+}
+
+// === EXPORT ===
+async function loadExportDeviceDropdown() {
+    const d = await api('devices');
+    allDevices = d.devices || [];
+    const sel = document.getElementById('exportDevice');
+    const firstOpt = sel.options[0];
+    sel.innerHTML = '';
+    sel.appendChild(firstOpt);
+    allDevices.forEach(dv => {
+        const o = document.createElement('option');
+        o.value = dv.device_id;
+        o.textContent = (dv.device_name||dv.device_id) + ' (' + dv.device_id + ')';
+        sel.appendChild(o);
+    });
+}
+async function exportCsv(type) {
+    const days = parseInt(document.getElementById('exportDays').value) || 30;
+    const device = document.getElementById('exportDevice').value;
+    let endpoint = 'export-csv&type=' + encodeURIComponent(type) + '&days=' + days;
+    if (device) endpoint += '&device_id=' + encodeURIComponent(device);
+
+    document.getElementById('exportResult').innerHTML = '<p style="color:var(--primary)">Disa aktarma hazirlaniyor...</p>';
+
+    try {
+        const sep = API_URL.includes('?') ? '&' : '?';
+        const r = await fetch(API_URL + sep + 'request=' + endpoint, {
+            method: 'GET',
+            headers: { 'X-Admin-Token': ADMIN_TOKEN }
+        });
+        const contentType = r.headers.get('content-type') || '';
+        if (contentType.includes('text/csv') || contentType.includes('application/octet-stream')) {
+            const blob = await r.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = type + '_export_' + new Date().toISOString().slice(0,10) + '.csv';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            document.getElementById('exportResult').innerHTML = '<p style="color:var(--success)">Dosya indirildi!</p>';
+            toast('CSV dosyasi indirildi');
+        } else {
+            const d = await r.json();
+            if (d.success && d.download_url) {
+                window.open(d.download_url, '_blank');
+                document.getElementById('exportResult').innerHTML = '<p style="color:var(--success)">Indirme baslatildi!</p>';
+                toast('CSV indirme baslatildi');
+            } else if (d.success && d.csv) {
+                const blob = new Blob([d.csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = type + '_export_' + new Date().toISOString().slice(0,10) + '.csv';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                document.getElementById('exportResult').innerHTML = '<p style="color:var(--success)">Dosya indirildi!</p>';
+                toast('CSV dosyasi indirildi');
+            } else {
+                document.getElementById('exportResult').innerHTML = '';
+                toast(d.error || 'Disa aktarma basarisiz', 'error');
+            }
+        }
+    } catch (e) {
+        document.getElementById('exportResult').innerHTML = '';
+        toast('Hata: ' + e.message, 'error');
+    }
+}
+
+// === LOAD BALANCE ===
+async function loadLbDevices() {
+    const d = await api('devices');
+    allDevices = d.devices || [];
+    let html = '';
+    allDevices.filter(dv=>dv.is_active==1).forEach(dv => {
+        html += `<div class="device-checkbox">
+            <input type="checkbox" id="lbdev_${dv.device_id}" value="${esc(dv.device_id)}" onchange="updateLbWeights()">
+            <label for="lbdev_${dv.device_id}">${esc(dv.device_name||dv.device_id)}</label>
+            <span class="status badge badge-green">Aktif</span>
+        </div>`;
+    });
+    document.getElementById('lbDevices').innerHTML = html || '<p class="empty">Aktif cihaz yok</p>';
+    document.getElementById('lbWeightsContainer').innerHTML = '';
+}
+function selectAllLbDevices() {
+    document.querySelectorAll('#lbDevices input[type=checkbox]').forEach(cb => cb.checked = true);
+    updateLbWeights();
+}
+function updateLbWeights() {
+    const strategy = document.getElementById('lbStrategy').value;
+    const container = document.getElementById('lbWeightsContainer');
+    if (strategy !== 'weighted') { container.innerHTML = ''; return; }
+    const checked = [];
+    document.querySelectorAll('#lbDevices input:checked').forEach(cb => checked.push(cb.value));
+    if (checked.length === 0) { container.innerHTML = ''; return; }
+    let html = '<div class="card" style="padding:16px"><h4 style="margin-bottom:8px;font-size:14px">Cihaz Agirliklari</h4>';
+    checked.forEach(devId => {
+        const dev = allDevices.find(d => d.device_id === devId);
+        html += `<div class="form-row" style="margin-bottom:4px;align-items:center">
+            <label style="font-size:13px">${esc(dev ? (dev.device_name||dev.device_id) : devId)}</label>
+            <input type="number" id="lbw_${devId}" value="1" min="1" max="100" style="width:80px;margin:0">
+        </div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+document.getElementById('lbStrategy').addEventListener('change', updateLbWeights);
+
+async function distributeWeighted() {
+    const btn = document.getElementById('lbBtn');
+    btn.disabled = true;
+    btn.textContent = 'Gonderiliyor...';
+
+    const strategy = document.getElementById('lbStrategy').value;
+    const deviceIds = [];
+    document.querySelectorAll('#lbDevices input:checked').forEach(cb => deviceIds.push(cb.value));
+    if (deviceIds.length === 0) { toast('En az bir cihaz secin', 'error'); btn.disabled = false; btn.textContent = 'Dengeli Dagit'; return; }
+
+    const numbers = document.getElementById('lbNumbers').value;
+    if (!numbers.trim()) { toast('Numara girin', 'error'); btn.disabled = false; btn.textContent = 'Dengeli Dagit'; return; }
+
+    const message = document.getElementById('lbMessage').value;
+    if (!message.trim()) { toast('Mesaj girin', 'error'); btn.disabled = false; btn.textContent = 'Dengeli Dagit'; return; }
+
+    const body = {
+        strategy: strategy,
+        device_ids: deviceIds,
+        phone_numbers: numbers,
+        message: message,
+        priority: parseInt(document.getElementById('lbPriority').value) || 5
+    };
+
+    if (strategy === 'weighted') {
+        const weights = {};
+        deviceIds.forEach(devId => {
+            const input = document.getElementById('lbw_' + devId);
+            weights[devId] = input ? parseInt(input.value) || 1 : 1;
+        });
+        body.weights = weights;
+    }
+
+    try {
+        const d = await api('distribute-weighted', 'POST', body);
+        if (d.success) {
+            let resultHtml = `<div class="card" style="background:#f0fdf4;border:1px solid #86efac">
+                <h3 style="color:var(--success)">Dengeli Dagitim Basarili!</h3>
+                <p>Strateji: <strong>${esc(strategy)}</strong></p>
+                <p>Batch ID: <code>${d.batch_id||'-'}</code></p>
+                <p>Toplam: ${d.total_numbers||0} numara | Eklenen: ${d.inserted||0}</p>
+                <h4 style="margin-top:12px">Dagitim:</h4><ul>`;
+            for (const [dev, count] of Object.entries(d.distribution || {})) {
+                resultHtml += `<li><strong>${esc(dev)}</strong>: ${count} SMS</li>`;
+            }
+            resultHtml += '</ul></div>';
+            document.getElementById('lbResult').innerHTML = resultHtml;
+            document.getElementById('lbResult').style.display = 'block';
+            toast('Dengeli dagitim basarili!');
+        } else {
+            toast(d.error || 'Dagitim basarisiz', 'error');
+        }
+    } catch (e) {
+        toast('Hata: ' + e.message, 'error');
+    }
+    btn.disabled = false;
+    btn.textContent = 'Dengeli Dagit';
+}
+
+// === SMS KUYRUK GORSELLEŞTIRME ===
+async function loadQueueStats() {
+    const d = await api('queue-stats');
+    if (!d.success) return;
+
+    const c = d.status_counts || {};
+    document.getElementById('queueStatsGrid').innerHTML = `
+        <div class="stat-card"><div class="label">Bekleyen</div><div class="value orange">${c.pending||0}</div></div>
+        <div class="stat-card"><div class="label">Isleniyor</div><div class="value blue">${c.processing||0}</div></div>
+        <div class="stat-card"><div class="label">Gonderildi</div><div class="value green">${c.sent||0}</div></div>
+        <div class="stat-card"><div class="label">Basarisiz</div><div class="value red">${c.failed||0}</div></div>
+        <div class="stat-card"><div class="label">Ort. Islem (sn)</div><div class="value blue">${d.avg_process_seconds||0}</div></div>
+    `;
+
+    // Cihaz kuyruk tablosu
+    let tbl = '<table><tr><th>Cihaz</th><th>Bekleyen</th><th>Isleniyor</th><th>Gonderildi</th><th>Basarisiz</th><th>Gorsel</th></tr>';
+    (d.device_queues||[]).forEach(q => {
+        const total = (parseInt(q.pending)||0) + (parseInt(q.processing)||0) + (parseInt(q.sent)||0) + (parseInt(q.failed)||0);
+        const sentPct = total > 0 ? Math.round((parseInt(q.sent)||0)/total*100) : 0;
+        const failPct = total > 0 ? Math.round((parseInt(q.failed)||0)/total*100) : 0;
+        const pendPct = total > 0 ? Math.round((parseInt(q.pending)||0)/total*100) : 0;
+        tbl += `<tr>
+            <td><strong>${esc(q.device_name||q.device_id)}</strong></td>
+            <td><span class="badge badge-yellow">${q.pending||0}</span></td>
+            <td><span class="badge badge-blue">${q.processing||0}</span></td>
+            <td><span class="badge badge-green">${q.sent||0}</span></td>
+            <td><span class="badge badge-red">${q.failed||0}</span></td>
+            <td><div style="display:flex;height:16px;border-radius:4px;overflow:hidden;min-width:120px">
+                <div style="width:${sentPct}%;background:#16a34a" title="Sent ${sentPct}%"></div>
+                <div style="width:${failPct}%;background:#dc2626" title="Failed ${failPct}%"></div>
+                <div style="width:${pendPct}%;background:#d97706" title="Pending ${pendPct}%"></div>
+            </div></td>
+        </tr>`;
+    });
+    tbl += '</table>';
+    document.getElementById('deviceQueueTable').innerHTML = tbl;
+
+    // Throughput chart (bar style)
+    let throughputHtml = '<div style="display:flex;align-items:flex-end;gap:2px;height:120px;padding-top:8px">';
+    const maxTp = Math.max(1, ...(d.throughput||[]).map(t => parseInt(t.total)||1));
+    (d.throughput||[]).forEach(t => {
+        const h = Math.max(4, Math.round((parseInt(t.total)||0)/maxTp*100));
+        throughputHtml += `<div style="flex:1;display:flex;flex-direction:column;align-items:center">
+            <div style="width:100%;height:${h}px;background:var(--primary);border-radius:2px" title="${t.minute}: ${t.total} SMS"></div>
+            <span style="font-size:8px;color:var(--muted);margin-top:2px;writing-mode:vertical-lr">${t.minute||''}</span>
+        </div>`;
+    });
+    throughputHtml += '</div>';
+    document.getElementById('throughputChart').innerHTML = d.throughput?.length ? throughputHtml : '<p class="empty">Veri yok</p>';
+
+    // Queue trend
+    let trendHtml = '<div style="display:flex;align-items:flex-end;gap:4px;height:100px">';
+    const maxTr = Math.max(1, ...(d.queue_trend||[]).map(t => parseInt(t.total_at_hour)||1));
+    (d.queue_trend||[]).forEach(t => {
+        const h = Math.max(4, Math.round((parseInt(t.total_at_hour)||0)/maxTr*90));
+        const ph = Math.max(2, Math.round((parseInt(t.pending_at_hour)||0)/maxTr*90));
+        const label = (t.hour||'').slice(11,16);
+        trendHtml += `<div style="flex:1;display:flex;flex-direction:column;align-items:center">
+            <div style="width:80%;height:${h}px;background:var(--primary);border-radius:2px;position:relative">
+                <div style="position:absolute;bottom:0;width:100%;height:${ph}px;background:var(--warning);border-radius:0 0 2px 2px"></div>
+            </div>
+            <span style="font-size:8px;color:var(--muted);margin-top:2px">${label}</span>
+        </div>`;
+    });
+    trendHtml += '</div><div style="font-size:11px;color:var(--muted);margin-top:8px">Mavi: Toplam | Turuncu: Bekleyen</div>';
+    document.getElementById('queueTrendChart').innerHTML = d.queue_trend?.length ? trendHtml : '<p class="empty">Veri yok</p>';
+}
+
+// === UZAKTAN KOMUT ===
+async function loadCmdDeviceDropdowns() {
+    if (!allDevices.length) { const d = await api('devices'); allDevices = d.devices || []; }
+    let opts = '';
+    allDevices.forEach(d => { opts += `<option value="${esc(d.device_id)}">${esc(d.device_name||d.device_id)}</option>`; });
+    document.getElementById('cmdDevice').innerHTML = opts;
+    document.getElementById('cmdFilterDevice').innerHTML = '<option value="">Tum Cihazlar</option>' + opts;
+}
+
+async function sendDeviceCommand() {
+    const deviceId = document.getElementById('cmdDevice').value;
+    const commandType = document.getElementById('cmdType').value;
+    const expiresMin = parseInt(document.getElementById('cmdExpires').value) || 30;
+    const payloadStr = document.getElementById('cmdPayload').value.trim();
+
+    let payload = null;
+    if (payloadStr) {
+        try { payload = JSON.parse(payloadStr); } catch(e) { toast('Payload gecerli JSON degil', 'error'); return; }
+    }
+
+    const body = { device_id: deviceId, command_type: commandType, expires_minutes: expiresMin };
+    if (payload) body.payload = payload;
+
+    const d = await api('device-command', 'POST', body);
+    if (d.success) {
+        toast('Komut gonderildi: #' + d.command_id);
+        loadDeviceCommands();
+        document.getElementById('cmdPayload').value = '';
+    } else { toast(d.error || 'Hata', 'error'); }
+}
+
+async function loadDeviceCommands() {
+    const deviceId = document.getElementById('cmdFilterDevice')?.value || '';
+    const status = document.getElementById('cmdFilterStatus')?.value || '';
+    let endpoint = 'device-commands';
+    const params = [];
+    if (deviceId) params.push('device_id=' + encodeURIComponent(deviceId));
+    if (status) params.push('status=' + encodeURIComponent(status));
+    if (params.length) endpoint += '&' + params.join('&');
+
+    const d = await api(endpoint);
+    if (!d.success) return;
+
+    const statusBadge = s => {
+        const map = { pending:'badge-yellow', sent:'badge-blue', executed:'badge-green', failed:'badge-red', expired:'badge-gray' };
+        return `<span class="badge ${map[s]||'badge-gray'}">${esc(s)}</span>`;
+    };
+    const cmdLabel = t => {
+        const map = { restart_service:'Restart', sync_config:'Sync', update_app:'Update', clear_queue:'Clear Queue', send_log:'Send Log', custom:'Ozel' };
+        return map[t] || t;
+    };
+
+    let tbl = '<table><tr><th>ID</th><th>Cihaz</th><th>Komut</th><th>Durum</th><th>Olusturulma</th><th>Yurutulme</th></tr>';
+    (d.commands||[]).forEach(c => {
+        tbl += `<tr>
+            <td>#${c.id}</td>
+            <td>${esc(c.device_name||c.device_id)}</td>
+            <td>${cmdLabel(c.command_type)}</td>
+            <td>${statusBadge(c.status)}</td>
+            <td>${c.created_at||'-'}</td>
+            <td>${c.executed_at||'-'}</td>
+        </tr>`;
+    });
+    tbl += '</table>';
+    document.getElementById('commandsTable').innerHTML = d.commands?.length ? tbl : '<p class="empty">Komut bulunamadi</p>';
+}
+
+// === OTOMATIK OLCEKLENDIRME ===
+async function createAutoscaleRule() {
+    const body = {
+        rule_name: document.getElementById('asRuleName').value.trim(),
+        metric: document.getElementById('asMetric').value,
+        scale_up_threshold: parseInt(document.getElementById('asScaleUp').value) || 100,
+        scale_down_threshold: parseInt(document.getElementById('asScaleDown').value) || 10,
+        min_devices: parseInt(document.getElementById('asMinDevices').value) || 1,
+        max_devices: parseInt(document.getElementById('asMaxDevices').value) || 10,
+        cooldown_minutes: parseInt(document.getElementById('asCooldown').value) || 5
+    };
+    if (!body.rule_name) { toast('Kural adi zorunlu', 'error'); return; }
+
+    const d = await api('autoscale-rule', 'POST', body);
+    if (d.success) {
+        toast('Kural olusturuldu');
+        document.getElementById('asRuleName').value = '';
+        loadAutoscaleRules();
+    } else { toast(d.error || 'Hata', 'error'); }
+}
+
+async function loadAutoscaleRules() {
+    const d = await api('autoscale-rules');
+    if (!d.success) return;
+
+    const metricLabel = m => ({ queue_size:'Kuyruk', fail_rate:'Basarisizlik %', response_time:'Yanit Suresi', throughput:'Throughput' }[m]||m);
+
+    let tbl = '<table><tr><th>Ad</th><th>Metrik</th><th>Up Esigi</th><th>Down Esigi</th><th>Min/Max</th><th>Durum</th><th>Son Aksiyon</th><th>Islem</th></tr>';
+    (d.rules||[]).forEach(r => {
+        tbl += `<tr>
+            <td><strong>${esc(r.rule_name)}</strong></td>
+            <td>${metricLabel(r.metric)}</td>
+            <td>${r.scale_up_threshold}</td>
+            <td>${r.scale_down_threshold}</td>
+            <td>${r.min_devices}/${r.max_devices}</td>
+            <td><span class="badge ${r.is_active==1?'badge-green':'badge-gray'}">${r.is_active==1?'Aktif':'Pasif'}</span></td>
+            <td>${r.last_action ? esc(r.last_action) + ' (' + (r.last_action_at||'').slice(0,16) + ')' : '-'}</td>
+            <td>
+                <button class="btn btn-sm ${r.is_active==1?'btn-warning':'btn-success'}" onclick="toggleAutoscale(${r.id})">${r.is_active==1?'Durdur':'Baslat'}</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteAutoscaleRule(${r.id})">Sil</button>
+            </td>
+        </tr>`;
+    });
+    tbl += '</table>';
+    document.getElementById('autoscaleRulesTable').innerHTML = d.rules?.length ? tbl : '<p class="empty">Kural bulunamadi</p>';
+}
+
+async function toggleAutoscale(id) {
+    const d = await api('autoscale-toggle', 'POST', { id });
+    if (d.success) { toast(d.message); loadAutoscaleRules(); }
+    else toast(d.error || 'Hata', 'error');
+}
+
+async function deleteAutoscaleRule(id) {
+    if (!confirm('Bu kurali silmek istediginize emin misiniz?')) return;
+    const d = await api('autoscale-rule&id=' + id, 'DELETE');
+    if (d.success) { toast('Kural silindi'); loadAutoscaleRules(); }
+    else toast(d.error || 'Hata', 'error');
+}
+
+async function loadAutoscaleHistory() {
+    const d = await api('autoscale-history');
+    if (!d.success) return;
+
+    let tbl = '<table><tr><th>Tarih</th><th>Kural</th><th>Aksiyon</th><th>Cihaz</th><th>Metrik Degeri</th><th>Esik</th><th>Aktif Cihaz</th></tr>';
+    (d.history||[]).forEach(h => {
+        const badge = h.action === 'scale_up' ? 'badge-green' : 'badge-red';
+        tbl += `<tr>
+            <td>${(h.created_at||'').slice(0,16)}</td>
+            <td>${esc(h.rule_name||'-')}</td>
+            <td><span class="badge ${badge}">${h.action==='scale_up'?'SCALE UP':'SCALE DOWN'}</span></td>
+            <td>${esc(h.device_id||'-')}</td>
+            <td>${h.metric_value}</td>
+            <td>${h.threshold_value}</td>
+            <td>${h.active_device_count}</td>
+        </tr>`;
+    });
+    tbl += '</table>';
+    document.getElementById('autoscaleHistoryTable').innerHTML = d.history?.length ? tbl : '<p class="empty">Gecmis bulunamadi</p>';
+}
+
+// === SISTEM DURUMU ===
+async function loadSystemStatus() {
+    const d = await api('system-status');
+    if (!d.success) return;
+
+    const statusLabel = s => ({ operational:'Calisiyor', degraded:'Dusuk Performans', partial_outage:'Kismi Kesinti', major_outage:'Buyuk Kesinti', maintenance:'Bakim' }[s]||s);
+    const statusBadge = s => {
+        const map = { operational:'badge-green', degraded:'badge-yellow', partial_outage:'badge-yellow', major_outage:'badge-red', maintenance:'badge-blue' };
+        return `<span class="badge ${map[s]||'badge-gray'}">${statusLabel(s)}</span>`;
+    };
+
+    let tbl = '<table><tr><th>Bilesen</th><th>Durum</th><th>Mesaj</th><th>Guncelleme</th></tr>';
+    (d.components||[]).forEach(c => {
+        tbl += `<tr>
+            <td><strong>${esc(c.component)}</strong></td>
+            <td>${statusBadge(c.status)}</td>
+            <td>${esc(c.message||'-')}</td>
+            <td>${(c.updated_at||'').slice(0,16)}</td>
+        </tr>`;
+    });
+    tbl += '</table>';
+    document.getElementById('componentStatusTable').innerHTML = tbl;
+}
+
+async function updateComponentStatus() {
+    const body = {
+        component: document.getElementById('statusComponent').value,
+        status: document.getElementById('statusValue').value,
+        message: document.getElementById('statusMessage').value.trim()
+    };
+    const d = await api('update-component-status', 'POST', body);
+    if (d.success) { toast('Durum guncellendi'); loadSystemStatus(); document.getElementById('statusMessage').value = ''; }
+    else toast(d.error || 'Hata', 'error');
+}
+
+async function createIncident() {
+    const comps = [];
+    document.querySelectorAll('.incidentComp:checked').forEach(c => comps.push(c.value));
+    const body = {
+        title: document.getElementById('incidentTitle').value.trim(),
+        description: document.getElementById('incidentDesc').value.trim(),
+        severity: document.getElementById('incidentSeverity').value,
+        affected_components: comps
+    };
+    if (!body.title) { toast('Baslik zorunlu', 'error'); return; }
+
+    const d = await api('create-incident', 'POST', body);
+    if (d.success) {
+        toast('Olay olusturuldu');
+        document.getElementById('incidentTitle').value = '';
+        document.getElementById('incidentDesc').value = '';
+        document.querySelectorAll('.incidentComp').forEach(c => c.checked = false);
+        loadIncidents();
+        loadSystemStatus();
+    } else toast(d.error || 'Hata', 'error');
+}
+
+async function loadIncidents() {
+    const d = await api('incidents');
+    if (!d.success) return;
+
+    const sevBadge = s => ({ minor:'badge-yellow', major:'badge-yellow', critical:'badge-red' }[s]||'badge-gray');
+    const stsBadge = s => ({ investigating:'badge-red', identified:'badge-yellow', monitoring:'badge-blue', resolved:'badge-green' }[s]||'badge-gray');
+
+    let tbl = '<table><tr><th>Tarih</th><th>Baslik</th><th>Ciddiyet</th><th>Durum</th><th>Etkilenenler</th><th>Islem</th></tr>';
+    (d.incidents||[]).forEach(i => {
+        const comps = (i.affected_components||[]).map(c => esc(c)).join(', ');
+        tbl += `<tr>
+            <td>${(i.created_at||'').slice(0,16)}</td>
+            <td><strong>${esc(i.title)}</strong></td>
+            <td><span class="badge ${sevBadge(i.severity)}">${esc(i.severity)}</span></td>
+            <td><span class="badge ${stsBadge(i.status)}">${esc(i.status)}</span></td>
+            <td>${comps||'-'}</td>
+            <td>${i.status !== 'resolved' ?
+                `<select onchange="updateIncident(${i.id}, this.value)" style="width:auto;padding:4px 8px;margin:0">
+                    <option value="">-- Guncelle --</option>
+                    <option value="investigating">Inceleniyor</option>
+                    <option value="identified">Tanimlandi</option>
+                    <option value="monitoring">Izleniyor</option>
+                    <option value="resolved">Cozuldu</option>
+                </select>` : '<span class="badge badge-green">Cozuldu</span>'
+            }</td>
+        </tr>`;
+    });
+    tbl += '</table>';
+    document.getElementById('incidentsTable').innerHTML = d.incidents?.length ? tbl : '<p class="empty">Olay bulunamadi</p>';
+}
+
+async function updateIncident(id, status) {
+    if (!status) return;
+    const d = await api('update-incident', 'POST', { id, status });
+    if (d.success) { toast('Olay guncellendi'); loadIncidents(); loadSystemStatus(); }
+    else toast(d.error || 'Hata', 'error');
+}
+
+// === API VERSIYONLARI ===
+async function loadApiVersions() {
+    const d = await api('api-versions');
+    if (!d.success) return;
+
+    let tbl = '<table><tr><th>Versiyon</th><th>Durum</th><th>Varsayilan</th><th>Degisiklik Notu</th><th>Deprecated</th><th>Sunset</th></tr>';
+    (d.versions||[]).forEach(v => {
+        tbl += `<tr>
+            <td><strong>${esc(v.version)}</strong></td>
+            <td><span class="badge ${v.is_active==1?'badge-green':'badge-red'}">${v.is_active==1?'Aktif':'Pasif'}</span></td>
+            <td>${v.is_default==1?'<span class="badge badge-blue">Varsayilan</span>':'-'}</td>
+            <td>${esc(v.changelog||'-')}</td>
+            <td>${v.deprecated_at||'-'}</td>
+            <td>${v.sunset_at||'-'}</td>
+        </tr>`;
+    });
+    tbl += '</table>';
+    document.getElementById('apiVersionsTable').innerHTML = tbl;
+}
+
+async function saveApiVersion() {
+    const body = {
+        version: document.getElementById('avVersion').value.trim(),
+        is_default: document.getElementById('avDefault').value === '1',
+        changelog: document.getElementById('avChangelog').value.trim()
+    };
+    if (!body.version) { toast('Versiyon zorunlu', 'error'); return; }
+
+    const d = await api('api-version', 'POST', body);
+    if (d.success) {
+        toast('Versiyon kaydedildi');
+        document.getElementById('avVersion').value = '';
+        document.getElementById('avChangelog').value = '';
+        loadApiVersions();
+    } else toast(d.error || 'Hata', 'error');
+}
+
+// === UTILS ===
+function esc(s) { const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
+</script>
+</body>
+</html>

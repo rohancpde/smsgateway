@@ -1,0 +1,27 @@
+# SMS Gateway - Apache Security Configuration
+
+# HTTPS Zorunluluğu
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Dizin listelemeyi engelle
+Options -Indexes
+
+# Hassas dosyalara erişimi engelle
+<FilesMatch "\.(env|sql|md|log|gitignore)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Gizli dosyalara erişimi engelle
+<FilesMatch "^\.">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# PHP dosyaları hariç direkt erişimi engelle
+<FilesMatch "^(config|middleware|validation|helpers)\.php$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
