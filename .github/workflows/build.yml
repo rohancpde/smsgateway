@@ -1,3 +1,4 @@
+
 name: Build Android APK
 
 on:
@@ -5,26 +6,49 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    name: Build APK
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          cache: true
+
+      - name: Check environment
+        run: |
+          flutter --version
+          java -version
 
       - name: Install dependencies
         working-directory: app
         run: flutter pub get
 
-      - name: Build APK
+      - name: Build APK with detailed logs
         working-directory: app
-        run: flutter build apk --release --verbose
+        run: |
+          flutter build apk --release --verbose
+
+      - name: Show APK files
+        if: always()
+        run: |
+          find app/build -type f -name "*.apk" -print || true
+
       - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: smsgateway-apk
-          path: app/build/app/outputs/flutter-apk/app-release.apk
+          path: app/build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error
+          retention-days: 7
